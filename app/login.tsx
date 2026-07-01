@@ -1,5 +1,8 @@
+//app/login.tsx
 import { router } from 'expo-router';
-import { Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
+import { AppButton } from '../src/components/ui/AppButton';
+import { AppInput } from '../src/components/ui/AppInput';
 import { APP_FULL_NAME, COLORS } from '../src/constants/theme';
 
 export default function LoginScreen() {
@@ -34,47 +37,17 @@ export default function LoginScreen() {
       </View>
 
       <View style={{ gap: 14 }}>
-        <TextInput
+        <AppInput
           placeholder="Email"
           keyboardType="email-address"
           autoCapitalize="none"
-          style={{
-            backgroundColor: COLORS.white,
-            borderWidth: 1,
-            borderColor: COLORS.border,
-            borderRadius: 12,
-            padding: 14,
-            fontSize: 16,
-          }}
         />
 
-        <TextInput
-          placeholder="Mot de passe"
-          secureTextEntry
-          style={{
-            backgroundColor: COLORS.white,
-            borderWidth: 1,
-            borderColor: COLORS.border,
-            borderRadius: 12,
-            padding: 14,
-            fontSize: 16,
-          }}
-        />
+        <AppInput placeholder="Mot de passe" secureTextEntry />
 
-        <TouchableOpacity
-          onPress={() => router.push('/dashboard')}
-          style={{
-            backgroundColor: COLORS.primary,
-            paddingVertical: 15,
-            borderRadius: 12,
-            alignItems: 'center',
-            marginTop: 8,
-          }}
-        >
-          <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: '700' }}>
-            Se connecter
-          </Text>
-        </TouchableOpacity>
+        <View style={{ marginTop: 8 }}>
+          <AppButton title="Se connecter" onPress={() => router.push('/dashboard')} />
+        </View>
       </View>
     </View>
   );
