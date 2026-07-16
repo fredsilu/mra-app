@@ -331,3 +331,193 @@ Cette vue donnera immédiatement une vision globale de l'accompagnement.
 ---
 
 Je pense que cette organisation est suffisamment robuste pour accompagner l'évolution du MRA pendant plusieurs années. Comme pour JFKApp, nous pourrons travailler **module par module**, en ne passant au suivant qu'une fois le précédent entièrement développé, testé et validé. Cela garantit une application stable, facile à maintenir et dont chaque étape apporte une valeur fonctionnelle immédiatement utilisable.
+
+
+
+Excellent. À partir de maintenant, nous travaillons comme une vraie équipe de développement. Je vais être exigeant sur l'architecture, les bonnes pratiques et la qualité du code.
+
+# MRA v1.0.0 — Sprint 0 : Infrastructure
+
+Avant d'écrire la moindre logique métier, nous allons mettre en place le socle technique.
+
+---
+
+# Étape 1 — Définir les technologies (choix d'architecture)
+
+Je te propose cette stack :
+
+| Élément          | Choix                                             |
+| ---------------- | ------------------------------------------------- |
+| Frontend         | React Native + Expo SDK (dernière version stable) |
+| Navigation       | Expo Router                                       |
+| Langage          | TypeScript                                        |
+| Backend          | Firebase                                          |
+| Base de données  | Cloud Firestore                                   |
+| Authentification | Firebase Authentication                           |
+| Stockage         | Firebase Storage                                  |
+| État global      | Zustand                                           |
+| Formulaires      | React Hook Form                                   |
+| Validation       | Zod                                               |
+| Dates            | dayjs                                             |
+| Icônes           | Expo Vector Icons                                 |
+| UI               | Composants maison (pas de bibliothèque UI lourde) |
+| Tests            | Jest + React Native Testing Library               |
+| Qualité          | ESLint + Prettier                                 |
+
+**Pourquoi ?**
+
+* C'est léger.
+* C'est moderne.
+* C'est très maintenable.
+* C'est proche de ce que nous utilisons déjà sur JFKApp.
+
+---
+
+# Étape 2 — Installer les dépendances
+
+Je te propose de les installer **par catégorie**.
+
+### Navigation
+
+```bash
+npx expo install expo-router react-native-safe-area-context react-native-screens
+```
+
+### Firebase
+
+```bash
+npm install firebase
+```
+
+### État global
+
+```bash
+npm install zustand
+```
+
+### Formulaires
+
+```bash
+npm install react-hook-form zod @hookform/resolvers
+```
+
+### Utilitaires
+
+```bash
+npm install dayjs
+```
+
+### Qualité du code
+
+```bash
+npm install -D eslint prettier eslint-config-prettier eslint-plugin-react-hooks
+```
+
+---
+
+# Étape 3 — Arborescence définitive
+
+Je te propose cette structure (celle que nous garderons jusqu'à la V2) :
+
+```text
+mra-app/
+│
+├── app/
+│   ├── (auth)/
+│   ├── (app)/
+│   ├── (modals)/
+│   └── _layout.tsx
+│
+├── src/
+│   ├── assets/
+│   ├── components/
+│   │   ├── ui/
+│   │   ├── layout/
+│   │   ├── forms/
+│   │   ├── cards/
+│   │   └── common/
+│   ├── config/
+│   ├── constants/
+│   ├── hooks/
+│   ├── layouts/
+│   ├── models/
+│   ├── providers/
+│   ├── services/
+│   ├── store/
+│   ├── theme/
+│   ├── types/
+│   ├── utils/
+│   └── validations/
+│
+├── docs/
+├── tests/
+├── .github/
+├── README.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+└── .env.example
+```
+
+---
+
+# Étape 4 — Les règles Git
+
+À partir d'aujourd'hui :
+
+* ✅ Une fonctionnalité = une branche `feature/...`
+* ✅ Un commit logique à chaque étape importante
+* ✅ `git push` en fin de session
+* ❌ Pas de développement direct sur `main`
+
+Les messages de commit suivront les conventions :
+
+* `feat:`
+* `fix:`
+* `refactor:`
+* `docs:`
+* `style:`
+* `test:`
+* `chore:`
+
+---
+
+# Étape 5 — Notre backlog
+
+Je te propose de suivre ce tableau pour tout le projet.
+
+| Sprint    | Module                | Statut      |
+| --------- | --------------------- | ----------- |
+| Sprint 0  | Infrastructure        | 🟡 En cours |
+| Sprint 1  | Authentification      | ⏳           |
+| Sprint 2  | Gestion des personnes | ⏳           |
+| Sprint 3  | Demandes d'entretien  | ⏳           |
+| Sprint 4  | Assignation           | ⏳           |
+| Sprint 5  | Rendez-vous           | ⏳           |
+| Sprint 6  | Entretiens            | ⏳           |
+| Sprint 7  | Prises en charge      | ⏳           |
+| Sprint 8  | Suivis                | ⏳           |
+| Sprint 9  | Tableau de bord       | ⏳           |
+| Sprint 10 | Tests et optimisation | ⏳           |
+
+---
+
+## Une amélioration que je souhaite apporter
+
+Pour MRA, je voudrais que nous utilisions une méthode de travail encore plus rigoureuse que pour JFKApp.
+
+Avant chaque sprint, nous préparerons un document dans `docs/` :
+
+* `SPRINT-00.md`
+* `SPRINT-01.md`
+* `SPRINT-02.md`
+* etc.
+
+Chaque document contiendra :
+
+* les objectifs du sprint ;
+* les fonctionnalités prévues ;
+* les critères de validation ;
+* les tâches à réaliser ;
+* les décisions techniques prises.
+
+Ainsi, même dans six mois, nous saurons exactement **pourquoi** une décision a été prise et où en est le projet. C'est une pratique courante dans les projets professionnels et cela nous donnera une excellente traçabilité tout au long du développement.

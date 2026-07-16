@@ -5,22 +5,40 @@ import { Alert, Image, Text, View } from 'react-native';
 import { AppButton } from '../src/components/ui/AppButton';
 import { AppInput } from '../src/components/ui/AppInput';
 import { APP_FULL_NAME, COLORS } from '../src/constants/theme';
-import { loginWithEmail } from '../src/services/auth.service';
+import { useAuth } from '../src/contexts/AuthContext';
 
 export default function LoginScreen() {
+  const { login } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleLogin() {
+    if (!email.trim() || !password) {
+      Alert.alert(
+        'Champs obligatoires',
+        'Veuillez saisir votre adresse email et votre mot de passe.'
+      );
+
+      return;
+    }
+
     try {
-      setIsLoading(true);
-      await loginWithEmail(email, password);
+      setIsSubmitting(true);
+
+      await login(email, password);
+
       router.replace('/dashboard');
     } catch (error) {
-      Alert.alert('Connexion impossible', 'Email ou mot de passe incorrect.');
+      console.error('Erreur de connexion :', error);
+
+      Alert.alert(
+        'Connexion impossible',
+        'Adresse email ou mot de passe incorrect.'
+      );
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -45,11 +63,23 @@ export default function LoginScreen() {
           }}
         />
 
-        <Text style={{ fontSize: 28, fontWeight: '800', color: COLORS.text }}>
+        <Text
+          style={{
+            fontSize: 28,
+            fontWeight: '800',
+            color: COLORS.text,
+          }}
+        >
           Connexion
         </Text>
 
-        <Text style={{ marginTop: 6, color: COLORS.muted, textAlign: 'center' }}>
+        <Text
+          style={{
+            marginTop: 6,
+            color: COLORS.muted,
+            textAlign: 'center',
+          }}
+        >
           {APP_FULL_NAME}
         </Text>
       </View>
@@ -59,8 +89,10 @@ export default function LoginScreen() {
           placeholder="Email"
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
           value={email}
           onChangeText={setEmail}
+          editable={!isSubmitting}
         />
 
         <AppInput
@@ -68,11 +100,12 @@ export default function LoginScreen() {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          editable={!isSubmitting}
         />
 
         <View style={{ marginTop: 8 }}>
           <AppButton
-            title={isLoading ? 'Connexion...' : 'Se connecter'}
+            title={isSubmitting ? 'Connexion...' : 'Se connecter'}
             onPress={handleLogin}
           />
         </View>

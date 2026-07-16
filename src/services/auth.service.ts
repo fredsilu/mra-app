@@ -1,3 +1,4 @@
+//src/services/auth.service.ts
 import {
   signInWithEmailAndPassword,
   signOut,
