@@ -7,15 +7,13 @@ import { COLORS } from '../src/constants/theme';
 import { useAuth } from '../src/contexts/AuthContext';
 
 export default function DashboardScreen() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   async function handleLogout() {
     try {
       setIsLoggingOut(true);
-
       await logout();
-
       router.replace('/login');
     } catch (error) {
       console.error('Erreur lors de la déconnexion :', error);
@@ -52,22 +50,14 @@ export default function DashboardScreen() {
 
       <Text
         style={{
-          marginTop: 8,
-          color: COLORS.muted,
-          textAlign: 'center',
-        }}
-      >
-        Infrastructure V1.0.0 en cours
-      </Text>
-
-      <Text
-        style={{
-          marginTop: 24,
+          marginTop: 20,
+          fontSize: 18,
+          fontWeight: '700',
           color: COLORS.text,
           textAlign: 'center',
         }}
       >
-        Session : {isAuthenticated ? 'active' : 'inactive'}
+        {profile?.displayName || user?.email}
       </Text>
 
       <Text
@@ -77,8 +67,20 @@ export default function DashboardScreen() {
           textAlign: 'center',
         }}
       >
-        {user?.email ?? 'Aucun utilisateur connecté'}
+        Rôle : {profile?.role ?? 'Profil non configuré'}
       </Text>
+
+      {!profile && (
+        <Text
+          style={{
+            marginTop: 16,
+            color: COLORS.muted,
+            textAlign: 'center',
+          }}
+        >
+          Aucun profil MRA n’a été trouvé dans Firestore.
+        </Text>
+      )}
 
       <View
         style={{

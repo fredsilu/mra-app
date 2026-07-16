@@ -1,88 +1,115 @@
 //src/contexts/AuthContext.tsx
+
 import { User, onAuthStateChanged } from 'firebase/auth';
 import {
-  ReactNode,
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
+    ReactNode,
+    createContext,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
 } from 'react';
 import { auth } from '../config/firebase';
 import {
-  loginWithEmail as loginWithEmailService,
-  logout as logoutService,
+    loginWithEmail as loginWithEmailService,
+    logout as logoutService,
 } from '../services/auth.service';
+import { getUserProfile } from '../services/user.service';
+import { UserProfile } from '../types/user.types';
 
 type AuthContextValue = {
-  user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+    user: User | null;
+    profile: UserProfile | null;
+    isLoading: boolean;
+    isAuthenticated: boolean;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 type AuthProviderProps = {
-  children: ReactNode;
+    children: ReactNode;
 };
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+    const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (firebaseUser) => {
-        setUser(firebaseUser);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error(
-          'Erreur lors de la vérification de la session Firebase :',
-          error
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(
+            auth,
+            async (firebaseUser) => {
+                setIsLoading(true);
+                setUser(firebaseUser);
+
+                if (!firebaseUser) {
+                    setProfile(null);
+                    setIsLoading(false);
+                    return;
+                }
+
+                try {
+                    const userProfile = await getUserProfile(firebaseUser.uid);
+                    setProfile(userProfile);
+                } catch (error) {
+                    console.error(
+                        'Erreur lors du chargement du profil utilisateur :',
+                        error
+                    );
+
+                    setProfile(null);
+                } finally {
+                    setIsLoading(false);
+                }
+            },
+            (error) => {
+                console.error(
+                    'Erreur lors de la vérification de la session Firebase :',
+                    error
+                );
+
+                setUser(null);
+                setProfile(null);
+                setIsLoading(false);
+            }
         );
 
-        setUser(null);
-        setIsLoading(false);
-      }
+        return unsubscribe;
+    }, []);
+
+    async function login(email: string, password: string) {
+        await loginWithEmailService(email, password);
+    }
+
+    async function logout() {
+        await logoutService();
+    }
+
+    const value = useMemo<AuthContextValue>(
+        () => ({
+            user,
+            profile,
+            isLoading,
+            isAuthenticated: user !== null,
+            login,
+            logout,
+        }),
+        [user, profile, isLoading]
     );
 
-    return unsubscribe;
-  }, []);
-
-  async function login(email: string, password: string) {
-    await loginWithEmailService(email, password);
-  }
-
-  async function logout() {
-    await logoutService();
-  }
-
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      isLoading,
-      isAuthenticated: user !== null,
-      login,
-      logout,
-    }),
-    [user, isLoading]
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
+    const context = useContext(AuthContext);
 
-  if (!context) {
-    throw new Error(
-      'useAuth doit être utilisé à l’intérieur de AuthProvider.'
-    );
-  }
+    if (!context) {
+        throw new Error(
+            'useAuth doit être utilisé à l’intérieur de AuthProvider.'
+        );
+    }
 
-  return context;
+    return context;
 }
