@@ -22,6 +22,7 @@ type AuthContextValue = {
     profile: UserProfile | null;
     isLoading: boolean;
     isAuthenticated: boolean;
+    hasAccess: boolean;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
 };
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             profile,
             isLoading,
             isAuthenticated: user !== null,
+            hasAccess: user !== null && profile?.isActive === true,
             login,
             logout,
         }),

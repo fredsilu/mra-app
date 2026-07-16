@@ -13,6 +13,7 @@ function RootNavigator() {
 
   const {
     isAuthenticated,
+    hasAccess,
     isLoading,
     profile,
   } = useAuth();
@@ -24,6 +25,7 @@ function RootNavigator() {
 
     const currentRoute = segments[0];
     const isOnLoginScreen = currentRoute === 'login';
+    const isOnAccessDeniedScreen = currentRoute === 'access-denied';
 
     if (!isAuthenticated) {
       if (!isOnLoginScreen) {
@@ -33,11 +35,20 @@ function RootNavigator() {
       return;
     }
 
-    if (isAuthenticated && isOnLoginScreen) {
+    if (!hasAccess) {
+      if (!isOnAccessDeniedScreen) {
+        router.replace('/access-denied');
+      }
+
+      return;
+    }
+
+    if (isOnLoginScreen || isOnAccessDeniedScreen) {
       router.replace(getHomeRoute(profile));
     }
   }, [
     isAuthenticated,
+    hasAccess,
     isLoading,
     profile,
     segments,
@@ -47,9 +58,7 @@ function RootNavigator() {
     return <SessionLoader />;
   }
 
-  return (
-    <Stack screenOptions={{ headerShown: false }} />
-  );
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
 
 export default function RootLayout() {
