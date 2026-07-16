@@ -87,18 +87,24 @@ export default function DashboardScreen() {
         Peut gérer les utilisateurs : {canManageUsers(profile) ? 'Oui' : 'Non'}
       </Text>
 
-      <View
-        style={{
-          width: '100%',
-          maxWidth: 360,
-          marginTop: 32,
-        }}
-      >
-        <AppButton
-          title={isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
-          onPress={handleLogout}
-        />
-      </View>
+     <View
+  style={{
+    width: '100%',
+    maxWidth: 360,
+    marginTop: 32,
+    gap: 12,
+  }}
+>
+  <AppButton
+    title="Personnes"
+    onPress={() => router.push('/people')}
+  />
+
+  <AppButton
+    title={isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+    onPress={handleLogout}
+  />
+</View>
     </View>
   );
 }

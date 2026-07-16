@@ -40,7 +40,6 @@ export interface Person {
 
     isArchived: boolean;
 
-    createdAt: Date;
-
-    updatedAt: Date;
+    createdAt?: Date;
+updatedAt?: Date;
 }

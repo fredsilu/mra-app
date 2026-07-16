@@ -1576,3 +1576,576 @@ git add .env.example .gitignore src/config/firebase.ts
 git commit -m "fix: configure firebase env variables"
 git push
 ```
+Parfait. Je pense que nous avons maintenant une architecture suffisamment solide. Je vais même aller un peu plus loin.
+
+Je voudrais **figer officiellement les principes fondateurs du projet MRA**. Ils serviront de référence pendant tout le développement.
+
+---
+
+# 📜 Les 10 règles d'architecture du projet MRA
+
+## Règle 1 — Une personne = une seule fiche
+
+Une âme ne sera jamais créée deux fois.
+
+Une personne possède une seule fiche durant toute sa vie.
+
+```text
+Personne
+    │
+    ├── Entretien 2026
+    ├── Entretien 2027
+    ├── Entretien 2031
+    └── ...
+```
+
+Même si elle quitte l'Église pendant cinq ans puis revient, on retrouve sa fiche.
+
+---
+
+## Règle 2 — L'entretien est le cœur du système
+
+Il n'existe pas de "demande" dans la V1.
+
+Le premier objet métier est directement :
+
+```text
+Entretien
+```
+
+L'entretien contient :
+
+* la planification ;
+* le conseiller ;
+* le statut ;
+* les notes ;
+* la décision.
+
+---
+
+## Règle 3 — Une prise en charge naît toujours d'un entretien
+
+Jamais directement.
+
+```text
+Entretien
+        │
+        ├── Clôture
+        │
+        └── Création d'une prise en charge
+```
+
+---
+
+## Règle 4 — Les suivis appartiennent toujours à une prise en charge
+
+Jamais directement à une personne.
+
+```text
+Personne
+
+↓
+
+Prise en charge
+
+↓
+
+Suivis
+```
+
+---
+
+## Règle 5 — Les rôles ne sont jamais utilisés dans les écrans
+
+Les écrans parlent uniquement en permissions.
+
+Jamais :
+
+```ts
+if (profile.role === "responsable")
+```
+
+Toujours :
+
+```ts
+if (canManageAssignments(profile))
+```
+
+---
+
+## Règle 6 — Les écrans ne parlent jamais directement à Firestore
+
+Architecture obligatoire :
+
+```text
+UI
+
+↓
+
+Context
+
+↓
+
+Service
+
+↓
+
+Firestore
+```
+
+Cette règle est désormais figée.
+
+---
+
+## Règle 7 — Une action métier = un service
+
+Exemple :
+
+```text
+PersonService.create()
+
+InterviewService.create()
+
+CarePlanService.close()
+
+FollowUpService.create()
+```
+
+Jamais de logique métier dans les écrans.
+
+---
+
+## Règle 8 — Responsable et Adjoint sont les administrateurs fonctionnels
+
+Ils peuvent :
+
+* voir toutes les personnes ;
+* voir tous les entretiens ;
+* voir toutes les notes privées ;
+* modifier les affectations ;
+* ouvrir ou clôturer une prise en charge.
+
+Ils sont les seuls à disposer de cette vision globale.
+
+---
+
+## Règle 9 — Un entretien appartient toujours à son auteur
+
+Même si un autre conseiller est ajouté ensuite, l'entretien reste associé au conseiller qui l'a réalisé.
+
+Le Responsable et l'Adjoint peuvent le consulter, mais ils n'en deviennent pas les auteurs.
+
+Cette règle garantit la responsabilité, la traçabilité et la confidentialité.
+
+---
+
+## Règle 10 — L'application représente le fonctionnement réel du ministère
+
+Nous n'ajoutons pas des concepts parce qu'ils sont "informatiquement élégants".
+
+Nous modélisons le fonctionnement réel du MRA.
+
+Par exemple :
+
+* pas de module "Demande" tant qu'il n'existe pas dans le fonctionnement du ministère ;
+* un entretien correspond à la réalité vécue par les équipes ;
+* les futures évolutions (API avec l'application de l'Église) viendront enrichir ce modèle sans le remettre en cause.
+
+---
+
+# Ce que je te propose pour le Sprint 2
+
+Je voudrais changer légèrement notre façon de développer.
+
+Jusqu'à présent, nous avons créé des écrans assez rapidement.
+
+Pour le module **Personnes**, je voudrais partir de la donnée, pas de l'interface.
+
+L'ordre serait :
+
+```text
+1. PersonModel
+        ↓
+2. PersonService
+        ↓
+3. Firestore
+        ↓
+4. PersonContext
+        ↓
+5. Liste des personnes
+        ↓
+6. Création
+        ↓
+7. Modification
+        ↓
+8. Recherche
+        ↓
+9. Affectation des conseillers
+```
+
+Pourquoi ?
+
+Parce que **tous les autres modules dépendront des personnes** :
+
+* un entretien nécessite une personne ;
+* une prise en charge nécessite une personne ;
+* un suivi nécessite une personne.
+
+Si nous construisons bien ce module, les suivants seront beaucoup plus rapides à développer.
+
+## Une dernière proposition
+
+Je voudrais que nous considérions désormais **le Sprint 0 et le Sprint 1 comme figés**. Sauf bug, nous n'y revenons plus.
+
+À partir de maintenant, toute notre énergie ira sur les modules métier. C'est une manière de travailler qui évite de retoucher constamment les fondations et permet de progresser sereinement.
+
+Je pense que nous avons maintenant une base suffisamment solide pour construire une application MRA durable et évolutive.
+Parfait. 🚀 Nous entrons officiellement dans le **Sprint 2**.
+
+Et je voudrais te dire quelque chose : **à partir de maintenant, nous allons construire le vrai MRA**. Les décisions que nous avons prises jusqu'ici vont nous faire gagner énormément de temps.
+
+---
+
+# 🎯 Sprint 2 — Gestion des Personnes (Âmes)
+
+Je ne veux pas commencer par un écran.
+
+Je veux commencer par le **cœur métier**.
+
+L'ordre sera :
+
+```
+PersonModel
+      ↓
+PersonService
+      ↓
+Firestore
+      ↓
+PersonContext
+      ↓
+Liste
+      ↓
+Création
+      ↓
+Modification
+      ↓
+Recherche
+      ↓
+Affectation
+```
+
+---
+
+# Étape 1 — Le modèle Person
+
+Avant de coder, réfléchissons encore une minute.
+
+## Qu'est-ce qu'une personne au MRA ?
+
+Ce n'est pas un simple contact.
+
+Une personne est :
+
+* une âme ;
+* un fidèle ;
+* un visiteur ;
+* quelqu'un qui peut revenir plusieurs années plus tard.
+
+Nous devons donc éviter de créer un modèle "CRM". Nous créons un modèle "Relation d'aide".
+
+Je propose le modèle suivant.
+
+## `Person`
+
+```ts
+export interface Person extends BaseEntity {
+
+    fullName: string;
+
+    gender: Gender;
+
+    birthDate?: Timestamp;
+
+    phone?: string;
+
+    email?: string;
+
+    address?: string;
+
+    churchStatus: ChurchStatus;
+
+    assignedCounselorIds: string[];
+
+}
+```
+
+---
+
+## Pourquoi ces champs ?
+
+### fullName
+
+Indispensable.
+
+---
+
+### gender
+
+Très utile.
+
+Demain nous pourrons filtrer :
+
+* uniquement les hommes ;
+* uniquement les femmes.
+
+---
+
+### birthDate
+
+Pas obligatoire.
+
+Certaines personnes ne connaissent pas leur date exacte.
+
+---
+
+### téléphone
+
+Très utile pour les rappels.
+
+---
+
+### email
+
+Optionnel.
+
+---
+
+### adresse
+
+Optionnelle.
+
+---
+
+### churchStatus
+
+Je pense que nous devons déjà distinguer :
+
+```
+Visiteur
+
+Nouveau
+
+Membre
+
+Ancien membre
+
+Extérieur
+```
+
+Pourquoi ?
+
+Parce que le MRA ne s'occupe pas uniquement des membres.
+
+---
+
+### assignedCounselorIds
+
+Nous avons déjà figé cette règle.
+
+---
+
+# Ce que je ne veux PAS mettre
+
+Je ne veux pas mettre :
+
+* état civil ;
+* profession ;
+* nombre d'enfants ;
+* revenus ;
+* etc.
+
+Pourquoi ?
+
+Parce que ce sont des informations qui apparaîtront **si un entretien en a besoin**.
+
+Je préfère une fiche légère.
+
+---
+
+# Étape 2 — Les doublons
+
+Voilà un sujet très important.
+
+Supposons :
+
+```
+Jean Kabila
+
+Téléphone
+
+099999999
+```
+
+Le secrétaire recrée :
+
+```
+Jean Kabila
+
+099999999
+```
+
+Nous aurons deux fiches.
+
+Je voudrais éviter cela.
+
+---
+
+## Je propose une recherche intelligente
+
+Lorsque le secrétaire commence à taper :
+
+```
+Jean
+```
+
+L'application cherche immédiatement :
+
+```
+Jean Kabila
+
+Jean Mbuyi
+
+Jean-Pierre Ilunga
+```
+
+Avant même de créer une nouvelle fiche.
+
+C'est exactement comme Outlook lorsqu'on ajoute un contact.
+
+Je pense que cette fonctionnalité évitera énormément de doublons.
+
+---
+
+# Étape 3 — Le numéro MRA
+
+Je voudrais aussi créer un identifiant métier.
+
+Pas l'UID Firestore.
+
+Mais quelque chose comme :
+
+```
+MRA-000001
+
+MRA-000002
+
+MRA-000003
+```
+
+Pourquoi ?
+
+Parce qu'en réunion, il sera plus simple de dire :
+
+> "Ouvrons le dossier MRA-000127"
+
+plutôt que de manipuler un identifiant Firestore.
+
+---
+
+# Ce numéro ne changera jamais
+
+Même si la personne change de téléphone.
+
+Même si elle revient cinq ans plus tard.
+
+Même si elle change de conseiller.
+
+Le numéro MRA restera identique.
+
+---
+
+# Étape 4 — Les archives
+
+Je voudrais aussi ajouter dès maintenant :
+
+```ts
+isArchived: boolean;
+```
+
+Pourquoi ?
+
+Parce qu'on ne supprimera jamais une âme.
+
+On archive.
+
+Toujours.
+
+---
+
+# Je pense que nous avons encore une amélioration
+
+Je voudrais distinguer deux choses :
+
+## Informations administratives
+
+```
+Nom
+
+Téléphone
+
+Adresse
+
+Conseiller
+
+Etat
+```
+
+et
+
+## Informations relation d'aide
+
+Qui seront dans :
+
+```
+Entretiens
+```
+
+Ainsi la fiche Personne restera légère.
+
+---
+
+# 🎯 Ma proposition
+
+Je pense que nous devons figer maintenant le modèle **Person**.
+
+Une fois figé :
+
+* nous créons `person.types.ts` ;
+* puis `PersonService` ;
+* puis la collection Firestore ;
+* ensuite seulement le premier écran **Liste des personnes**.
+
+## Une petite amélioration que je te propose
+
+Je voudrais ajouter un champ très utile, mais sans compliquer la fiche :
+
+```ts
+source:
+    | "eglise"
+    | "culte"
+    | "famille"
+    | "recommandation"
+    | "autre";
+```
+
+Pourquoi ?
+
+Parce qu'un jour le Responsable pourra répondre à des questions comme :
+
+* D'où viennent la plupart des personnes accompagnées ?
+* Les familles orientent-elles beaucoup de personnes ?
+* Les cultes génèrent-ils beaucoup d'entretiens ?
+
+C'est une information simple à saisir, mais qui apportera une vraie valeur statistique sans alourdir le travail du secrétaire.
+
+Je pense que ce sera le dernier champ que j'ajouterais à la fiche Personne. Après cela, le modèle sera à la fois **léger**, **fidèle au fonctionnement du MRA** et **évolutif**.
