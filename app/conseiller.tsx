@@ -1,4 +1,3 @@
-//app/dashboard.tsx
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
@@ -6,11 +5,10 @@ import { AppButton } from '../src/components/ui/AppButton';
 import { COLORS } from '../src/constants/theme';
 import { useAuth } from '../src/contexts/AuthContext';
 
-import { canManageUsers } from '../src/permissions';
-
-export default function DashboardScreen() {
-  const { user, profile, logout } = useAuth();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+export default function ConseillerScreen() {
+  const { profile, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] =
+    useState(false);
 
   async function handleLogout() {
     try {
@@ -18,11 +16,14 @@ export default function DashboardScreen() {
       await logout();
       router.replace('/login');
     } catch (error) {
-      console.error('Erreur lors de la déconnexion :', error);
+      console.error(
+        'Erreur lors de la déconnexion :',
+        error
+      );
 
       Alert.alert(
         'Déconnexion impossible',
-        'Une erreur est survenue pendant la déconnexion.'
+        'Une erreur est survenue.'
       );
     } finally {
       setIsLoggingOut(false);
@@ -47,44 +48,27 @@ export default function DashboardScreen() {
           textAlign: 'center',
         }}
       >
-        Tableau de bord MRA
+        Espace Conseiller
+      </Text>
+
+      <Text
+        style={{
+          marginTop: 12,
+          color: COLORS.muted,
+          textAlign: 'center',
+        }}
+      >
+        Mes âmes, mes rendez-vous et mes suivis
       </Text>
 
       <Text
         style={{
           marginTop: 20,
-          fontSize: 18,
-          fontWeight: '700',
           color: COLORS.text,
           textAlign: 'center',
         }}
       >
-        {profile?.displayName || user?.email}
-      </Text>
-
-      <Text
-        style={{
-          marginTop: 6,
-          color: COLORS.muted,
-          textAlign: 'center',
-        }}
-      >
-        Rôle : {profile?.role ?? 'Profil non configuré'}
-      </Text>
-
-      {!profile && (
-        <Text
-          style={{
-            marginTop: 16,
-            color: COLORS.muted,
-            textAlign: 'center',
-          }}
-        >
-          Aucun profil MRA n’a été trouvé dans Firestore.
-        </Text>
-      )}
-      <Text style={{ marginTop: 10 }}>
-        Peut gérer les utilisateurs : {canManageUsers(profile) ? 'Oui' : 'Non'}
+        {profile?.displayName}
       </Text>
 
       <View
@@ -95,7 +79,11 @@ export default function DashboardScreen() {
         }}
       >
         <AppButton
-          title={isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+          title={
+            isLoggingOut
+              ? 'Déconnexion...'
+              : 'Se déconnecter'
+          }
           onPress={handleLogout}
         />
       </View>

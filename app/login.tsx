@@ -1,5 +1,5 @@
 //app/login.tsx
-import { router } from 'expo-router';
+
 import { useState } from 'react';
 import { Alert, Image, Text, View } from 'react-native';
 import { AppButton } from '../src/components/ui/AppButton';
@@ -29,7 +29,8 @@ export default function LoginScreen() {
 
       await login(email, password);
 
-      router.replace('/dashboard');
+      // La redirection est maintenant gérée
+      // automatiquement dans app/_layout.tsx.
     } catch (error) {
       console.error('Erreur de connexion :', error);
 
