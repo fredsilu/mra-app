@@ -1,11 +1,17 @@
 // app/person-form.tsx
-
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, SafeAreaView, Text, View } from 'react-native';
+import {
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import { AppButton } from '../src/components/ui/AppButton';
 import { AppInput } from '../src/components/ui/AppInput';
+import { AppSelect } from '../src/components/ui/AppSelect';
 import { COLORS } from '../src/constants/theme';
 import {
   createPerson,
@@ -14,18 +20,142 @@ import {
   getPersonById,
   updatePerson,
 } from '../src/services/person.service';
-import { Person } from '../src/types/person.types';
+import {
+  ChurchStatus,
+  ContactChannel,
+  Gender,
+  Person,
+  PersonOrigin,
+} from '../src/types/person.types';
+
+const genderOptions: Array<{
+  label: string;
+  value: Gender;
+}> = [
+  {
+    label: 'Homme',
+    value: 'male',
+  },
+  {
+    label: 'Femme',
+    value: 'female',
+  },
+];
+
+const churchStatusOptions: Array<{
+  label: string;
+  value: ChurchStatus;
+}> = [
+  {
+    label: 'Visiteur',
+    value: 'visitor',
+  },
+  {
+    label: 'Nouveau',
+    value: 'new',
+  },
+  {
+    label: 'Membre',
+    value: 'member',
+  },
+  {
+    label: 'Ancien membre',
+    value: 'former_member',
+  },
+  {
+    label: 'Externe',
+    value: 'external',
+  },
+];
+
+const originOptions: Array<{
+  label: string;
+  value: PersonOrigin;
+}> = [
+  {
+    label: 'Culte',
+    value: 'service',
+  },
+  {
+    label: 'Famille',
+    value: 'family',
+  },
+  {
+    label: 'Évangélisation',
+    value: 'evangelism',
+  },
+  {
+    label: 'Recommandation',
+    value: 'recommendation',
+  },
+  {
+    label: 'Réseaux sociaux',
+    value: 'social_media',
+  },
+  {
+    label: 'Site Internet',
+    value: 'website',
+  },
+  {
+    label: 'Autre',
+    value: 'other',
+  },
+];
+
+const contactChannelOptions: Array<{
+  label: string;
+  value: ContactChannel;
+}> = [
+  {
+    label: 'WhatsApp',
+    value: 'whatsapp',
+  },
+  {
+    label: 'Téléphone',
+    value: 'phone',
+  },
+  {
+    label: 'En présentiel',
+    value: 'in_person',
+  },
+  {
+    label: 'Email',
+    value: 'email',
+  },
+  {
+    label: 'Site Internet',
+    value: 'website',
+  },
+  {
+    label: 'Autre',
+    value: 'other',
+  },
+];
 
 export default function PersonFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
 
   const [fullName, setFullName] = useState('');
+  const [gender, setGender] = useState<Gender | undefined>();
+  const [churchStatus, setChurchStatus] =
+    useState<ChurchStatus | undefined>();
+  const [origin, setOrigin] = useState<PersonOrigin | undefined>();
+  const [contactChannel, setContactChannel] =
+    useState<ContactChannel | undefined>();
+
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
 
-  const [phoneDuplicate, setPhoneDuplicate] = useState<Person | null>(null);
+  const [phoneDuplicate, setPhoneDuplicate] =
+    useState<Person | null>(null);
   const [nameDuplicates, setNameDuplicates] = useState<Person[]>([]);
+
+  const [fullNameError, setFullNameError] = useState('');
+  const [genderError, setGenderError] = useState('');
+  const [churchStatusError, setChurchStatusError] = useState('');
+  const [originError, setOriginError] = useState('');
+  const [contactChannelError, setContactChannelError] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(id));
@@ -47,6 +177,10 @@ export default function PersonFormScreen() {
         }
 
         setFullName(person.fullName);
+        setGender(person.gender);
+        setChurchStatus(person.churchStatus);
+        setOrigin(person.origin);
+        setContactChannel(person.contactChannel);
         setPhone(person.phone ?? '');
         setEmail(person.email ?? '');
         setAddress(person.address ?? '');
@@ -68,8 +202,14 @@ export default function PersonFormScreen() {
     loadPerson();
   }, [id]);
 
+  function clearDuplicateWarnings() {
+    setPhoneDuplicate(null);
+    setNameDuplicates([]);
+  }
+
   function handleFullNameChange(value: string) {
     setFullName(value);
+    setFullNameError('');
     setNameDuplicates([]);
   }
 
@@ -78,9 +218,49 @@ export default function PersonFormScreen() {
     setPhoneDuplicate(null);
   }
 
+  function validateForm(): boolean {
+    let isValid = true;
+
+    setFullNameError('');
+    setGenderError('');
+    setChurchStatusError('');
+    setOriginError('');
+    setContactChannelError('');
+
+    if (!fullName.trim()) {
+      setFullNameError('Le nom complet est obligatoire.');
+      isValid = false;
+    }
+
+    if (!gender) {
+      setGenderError('Le sexe est obligatoire.');
+      isValid = false;
+    }
+
+    if (!churchStatus) {
+      setChurchStatusError(
+        'Le statut dans l’Église est obligatoire.'
+      );
+      isValid = false;
+    }
+
+    if (!origin) {
+      setOriginError('L’origine est obligatoire.');
+      isValid = false;
+    }
+
+    if (!contactChannel) {
+      setContactChannelError(
+        'Le canal de contact est obligatoire.'
+      );
+      isValid = false;
+    }
+
+    return isValid;
+  }
+
   function openPerson(personId: string) {
-    setPhoneDuplicate(null);
-    setNameDuplicates([]);
+    clearDuplicateWarnings();
 
     router.replace({
       pathname: '/person-form',
@@ -90,12 +270,29 @@ export default function PersonFormScreen() {
     });
   }
 
-  async function savePerson(normalizedFullName: string) {
+  async function savePerson() {
+    if (
+      !gender ||
+      !churchStatus ||
+      !origin ||
+      !contactChannel
+    ) {
+      Alert.alert(
+        'Validation',
+        'Veuillez compléter tous les champs obligatoires.'
+      );
+      return;
+    }
+
     try {
       setIsSaving(true);
 
       const personData = {
-        fullName: normalizedFullName,
+        fullName: fullName.trim(),
+        gender,
+        churchStatus,
+        origin,
+        contactChannel,
         phone: phone.trim(),
         email: email.trim(),
         address: address.trim(),
@@ -106,9 +303,6 @@ export default function PersonFormScreen() {
       } else {
         await createPerson({
           ...personData,
-          gender: 'male',
-          churchStatus: 'visitor',
-          source: 'other',
           assignedCounselorIds: [],
           isArchived: false,
         });
@@ -142,10 +336,11 @@ export default function PersonFormScreen() {
   }
 
   async function handleSave() {
-    const normalizedFullName = fullName.trim();
-
-    if (!normalizedFullName) {
-      Alert.alert('Validation', 'Le nom est obligatoire.');
+    if (!validateForm()) {
+      Alert.alert(
+        'Validation',
+        'Veuillez compléter les champs obligatoires.'
+      );
       return;
     }
 
@@ -153,38 +348,26 @@ export default function PersonFormScreen() {
       return;
     }
 
-    setPhoneDuplicate(null);
-    setNameDuplicates([]);
+    clearDuplicateWarnings();
 
     try {
       setIsSaving(true);
 
       const normalizedPhoneInput = phone.trim();
 
-      /*
-       * Le téléphone est prioritaire.
-       * Un téléphone identique bloque l'enregistrement.
-       */
       if (normalizedPhoneInput) {
         const existingPerson = await findPersonByPhone(
           normalizedPhoneInput
         );
 
-        const isAnotherPerson =
-          existingPerson && existingPerson.id !== id;
-
-        if (isAnotherPerson) {
+        if (existingPerson && existingPerson.id !== id) {
           setPhoneDuplicate(existingPerson);
           return;
         }
       }
 
-      /*
-       * Le nom identique produit seulement un avertissement.
-       * La fiche courante est exclue en mode modification.
-       */
       const existingPeople = await findPeopleByExactName(
-        normalizedFullName
+        fullName.trim()
       );
 
       const otherPeopleWithSameName = existingPeople.filter(
@@ -196,7 +379,7 @@ export default function PersonFormScreen() {
         return;
       }
 
-      await savePerson(normalizedFullName);
+      await savePerson();
     } catch (error) {
       console.error(
         'Erreur lors de la vérification des doublons :',
@@ -213,11 +396,8 @@ export default function PersonFormScreen() {
   }
 
   async function continueDespiteNameDuplicate() {
-    const normalizedFullName = fullName.trim();
-
     setNameDuplicates([]);
-
-    await savePerson(normalizedFullName);
+    await savePerson();
   }
 
   if (isLoading) {
@@ -242,205 +422,328 @@ export default function PersonFormScreen() {
       style={{
         flex: 1,
         backgroundColor: COLORS.light,
-        padding: 16,
       }}
     >
-      <Text
-        style={{
-          fontSize: 26,
-          fontWeight: '700',
-          marginBottom: 20,
-          color: COLORS.text,
+      <ScrollView
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: 40,
         }}
+        keyboardShouldPersistTaps="handled"
       >
-        {id ? 'Modifier la personne' : 'Nouvelle personne'}
-      </Text>
+        <Text
+          style={{
+            fontSize: 26,
+            fontWeight: '700',
+            marginBottom: 20,
+            color: COLORS.text,
+          }}
+        >
+          {id ? 'Modifier la personne' : 'Nouvelle personne'}
+        </Text>
 
-      <View style={{ gap: 16 }}>
-        <AppInput
-          placeholder="Nom complet"
-          value={fullName}
-          onChangeText={handleFullNameChange}
-          autoCapitalize="words"
-        />
-
-        <AppInput
-          placeholder="Téléphone"
-          keyboardType="phone-pad"
-          value={phone}
-          onChangeText={handlePhoneChange}
-        />
-
-        <AppInput
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-
-        <AppInput
-          placeholder="Adresse"
-          value={address}
-          onChangeText={setAddress}
-        />
-
-        {phoneDuplicate && (
-          <View
-            style={{
-              padding: 16,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: '#C62828',
-              backgroundColor: '#FFEBEE',
-              gap: 12,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: '700',
-                color: '#B71C1C',
-              }}
-            >
-              Téléphone déjà utilisé
-            </Text>
-
+        <View style={{ gap: 16 }}>
+          <View style={{ gap: 6 }}>
             <Text
               style={{
                 color: COLORS.text,
-                lineHeight: 21,
+                fontSize: 14,
+                fontWeight: '600',
               }}
             >
-              Ce numéro appartient déjà à{' '}
-              <Text style={{ fontWeight: '700' }}>
-                {phoneDuplicate.fullName}
-              </Text>
-              , dossier {phoneDuplicate.mraNumber}.
+              Nom complet *
             </Text>
 
-            {phoneDuplicate.isArchived && (
+            <AppInput
+              placeholder="Nom complet"
+              value={fullName}
+              onChangeText={handleFullNameChange}
+              autoCapitalize="words"
+              style={{
+                borderColor: fullNameError
+                  ? '#C62828'
+                  : COLORS.border,
+              }}
+            />
+
+            {fullNameError ? (
               <Text
                 style={{
-                  color: '#B71C1C',
-                  fontWeight: '600',
+                  color: '#C62828',
+                  fontSize: 13,
                 }}
               >
-                Cette fiche est actuellement archivée.
+                {fullNameError}
               </Text>
-            )}
-
-            <AppButton
-              title="Ouvrir la fiche existante"
-              onPress={() => openPerson(phoneDuplicate.id)}
-            />
-
-            <AppButton
-              title="Fermer l’avertissement"
-              onPress={() => setPhoneDuplicate(null)}
-            />
+            ) : null}
           </View>
-        )}
 
-        {nameDuplicates.length > 0 && (
-          <View
-            style={{
-              padding: 16,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: '#EF6C00',
-              backgroundColor: '#FFF3E0',
-              gap: 12,
+          <AppSelect
+            label="Sexe"
+            placeholder="Sélectionner le sexe"
+            value={gender}
+            options={genderOptions}
+            onValueChange={(value) => {
+              setGender(value);
+              setGenderError('');
             }}
-          >
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: '700',
-                color: '#E65100',
-              }}
-            >
-              Nom déjà enregistré
-            </Text>
+            required
+            error={genderError}
+          />
 
+          <AppSelect
+            label="Statut dans l’Église"
+            placeholder="Sélectionner le statut"
+            value={churchStatus}
+            options={churchStatusOptions}
+            onValueChange={(value) => {
+              setChurchStatus(value);
+              setChurchStatusError('');
+            }}
+            required
+            error={churchStatusError}
+          />
+
+          <AppSelect
+            label="Origine"
+            placeholder="Sélectionner l’origine"
+            value={origin}
+            options={originOptions}
+            onValueChange={(value) => {
+              setOrigin(value);
+              setOriginError('');
+            }}
+            required
+            error={originError}
+          />
+
+          <AppSelect
+            label="Canal de contact"
+            placeholder="Sélectionner le canal"
+            value={contactChannel}
+            options={contactChannelOptions}
+            onValueChange={(value) => {
+              setContactChannel(value);
+              setContactChannelError('');
+            }}
+            required
+            error={contactChannelError}
+          />
+
+          <View style={{ gap: 6 }}>
             <Text
               style={{
                 color: COLORS.text,
-                lineHeight: 21,
+                fontSize: 14,
+                fontWeight: '600',
               }}
             >
-              {nameDuplicates.length === 1
-                ? 'Une personne porte déjà exactement ce nom.'
-                : `${nameDuplicates.length} personnes portent déjà exactement ce nom.`}
+              Téléphone
             </Text>
 
-            {nameDuplicates.map((person) => (
-              <View
-                key={person.id}
-                style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: '#FFFFFF',
-                  gap: 4,
-                }}
-              >
-                <Text
-                  style={{
-                    color: COLORS.text,
-                    fontWeight: '700',
-                  }}
-                >
-                  {person.fullName}
-                </Text>
-
-                <Text style={{ color: COLORS.text }}>
-                  {person.mraNumber}
-                  {person.phone ? ` • ${person.phone}` : ''}
-                </Text>
-
-                {person.isArchived && (
-                  <Text
-                    style={{
-                      color: '#E65100',
-                      fontWeight: '600',
-                    }}
-                  >
-                    Fiche archivée
-                  </Text>
-                )}
-
-                <AppButton
-                  title="Ouvrir cette fiche"
-                  onPress={() => openPerson(person.id)}
-                />
-              </View>
-            ))}
-
-            <AppButton
-              title="Continuer malgré l’avertissement"
-              onPress={continueDespiteNameDuplicate}
-            />
-
-            <AppButton
-              title="Annuler"
-              onPress={() => setNameDuplicates([])}
+            <AppInput
+              placeholder="Téléphone"
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={handlePhoneChange}
             />
           </View>
-        )}
 
-        {!phoneDuplicate && nameDuplicates.length === 0 && (
-          <AppButton
-            title={
-              isSaving
-                ? 'Vérification...'
-                : id
-                  ? 'Modifier'
-                  : 'Enregistrer'
-            }
-            onPress={handleSave}
-          />
-        )}
-      </View>
+          <View style={{ gap: 6 }}>
+            <Text
+              style={{
+                color: COLORS.text,
+                fontSize: 14,
+                fontWeight: '600',
+              }}
+            >
+              Email
+            </Text>
+
+            <AppInput
+              placeholder="Email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          <View style={{ gap: 6 }}>
+            <Text
+              style={{
+                color: COLORS.text,
+                fontSize: 14,
+                fontWeight: '600',
+              }}
+            >
+              Adresse
+            </Text>
+
+            <AppInput
+              placeholder="Adresse"
+              value={address}
+              onChangeText={setAddress}
+            />
+          </View>
+
+          {phoneDuplicate && (
+            <View
+              style={{
+                padding: 16,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#C62828',
+                backgroundColor: '#FFEBEE',
+                gap: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: '700',
+                  color: '#B71C1C',
+                }}
+              >
+                Téléphone déjà utilisé
+              </Text>
+
+              <Text
+                style={{
+                  color: COLORS.text,
+                  lineHeight: 21,
+                }}
+              >
+                Ce numéro appartient déjà à{' '}
+                <Text style={{ fontWeight: '700' }}>
+                  {phoneDuplicate.fullName}
+                </Text>
+                , dossier {phoneDuplicate.mraNumber}.
+              </Text>
+
+              {phoneDuplicate.isArchived && (
+                <Text
+                  style={{
+                    color: '#B71C1C',
+                    fontWeight: '600',
+                  }}
+                >
+                  Cette fiche est actuellement archivée.
+                </Text>
+              )}
+
+              <AppButton
+                title="Ouvrir la fiche existante"
+                onPress={() => openPerson(phoneDuplicate.id)}
+              />
+
+              <AppButton
+                title="Fermer l’avertissement"
+                onPress={() => setPhoneDuplicate(null)}
+              />
+            </View>
+          )}
+
+          {nameDuplicates.length > 0 && (
+            <View
+              style={{
+                padding: 16,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#EF6C00',
+                backgroundColor: '#FFF3E0',
+                gap: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: '700',
+                  color: '#E65100',
+                }}
+              >
+                Nom déjà enregistré
+              </Text>
+
+              <Text
+                style={{
+                  color: COLORS.text,
+                  lineHeight: 21,
+                }}
+              >
+                {nameDuplicates.length === 1
+                  ? 'Une personne porte déjà exactement ce nom.'
+                  : `${nameDuplicates.length} personnes portent déjà exactement ce nom.`}
+              </Text>
+
+              {nameDuplicates.map((person) => (
+                <View
+                  key={person.id}
+                  style={{
+                    padding: 12,
+                    borderRadius: 8,
+                    backgroundColor: COLORS.white,
+                    gap: 6,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: COLORS.text,
+                      fontWeight: '700',
+                    }}
+                  >
+                    {person.fullName}
+                  </Text>
+
+                  <Text style={{ color: COLORS.text }}>
+                    {person.mraNumber}
+                    {person.phone ? ` • ${person.phone}` : ''}
+                  </Text>
+
+                  {person.isArchived && (
+                    <Text
+                      style={{
+                        color: '#E65100',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Fiche archivée
+                    </Text>
+                  )}
+
+                  <AppButton
+                    title="Ouvrir cette fiche"
+                    onPress={() => openPerson(person.id)}
+                  />
+                </View>
+              ))}
+
+              <AppButton
+                title="Continuer malgré l’avertissement"
+                onPress={continueDespiteNameDuplicate}
+              />
+
+              <AppButton
+                title="Annuler"
+                onPress={() => setNameDuplicates([])}
+              />
+            </View>
+          )}
+
+          {!phoneDuplicate && nameDuplicates.length === 0 && (
+            <AppButton
+              title={
+                isSaving
+                  ? 'Enregistrement...'
+                  : id
+                    ? 'Modifier'
+                    : 'Enregistrer'
+              }
+              onPress={handleSave}
+            />
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
