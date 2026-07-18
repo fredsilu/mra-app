@@ -48,7 +48,7 @@ export function AppSelect<T extends string>({
 
   return (
     <View style={{ gap: 6 }}>
-      {label && (
+      {label ? (
         <Text
           style={{
             color: COLORS.text,
@@ -59,7 +59,7 @@ export function AppSelect<T extends string>({
           {label}
           {required ? ' *' : ''}
         </Text>
-      )}
+      ) : null}
 
       <TouchableOpacity
         activeOpacity={0.8}
@@ -87,16 +87,16 @@ export function AppSelect<T extends string>({
         </Text>
       </TouchableOpacity>
 
-      {error && (
-        <Text
-          style={{
-            color: '#C62828',
-            fontSize: 13,
-          }}
-        >
-          {error}
-        </Text>
-      )}
+      {error ? (
+  <Text
+    style={{
+      color: '#C62828',
+      fontSize: 13,
+    }}
+  >
+    {error}
+  </Text>
+) : null}
 
       <Modal
         visible={isOpen}

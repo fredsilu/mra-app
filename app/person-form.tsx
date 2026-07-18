@@ -5,6 +5,8 @@ import {
   Alert,
   SafeAreaView,
   ScrollView,
+  Platform,
+  TouchableOpacity,
   Text,
   View,
 } from 'react-native';
@@ -32,105 +34,105 @@ const genderOptions: Array<{
   label: string;
   value: Gender;
 }> = [
-  {
-    label: 'Homme',
-    value: 'male',
-  },
-  {
-    label: 'Femme',
-    value: 'female',
-  },
-];
+    {
+      label: 'Homme',
+      value: 'male',
+    },
+    {
+      label: 'Femme',
+      value: 'female',
+    },
+  ];
 
 const churchStatusOptions: Array<{
   label: string;
   value: ChurchStatus;
 }> = [
-  {
-    label: 'Visiteur',
-    value: 'visitor',
-  },
-  {
-    label: 'Nouveau',
-    value: 'new',
-  },
-  {
-    label: 'Membre',
-    value: 'member',
-  },
-  {
-    label: 'Ancien membre',
-    value: 'former_member',
-  },
-  {
-    label: 'Externe',
-    value: 'external',
-  },
-];
+    {
+      label: 'Visiteur',
+      value: 'visitor',
+    },
+    {
+      label: 'Nouveau',
+      value: 'new',
+    },
+    {
+      label: 'Membre',
+      value: 'member',
+    },
+    {
+      label: 'Ancien membre',
+      value: 'former_member',
+    },
+    {
+      label: 'Externe',
+      value: 'external',
+    },
+  ];
 
 const originOptions: Array<{
   label: string;
   value: PersonOrigin;
 }> = [
-  {
-    label: 'Culte',
-    value: 'service',
-  },
-  {
-    label: 'Famille',
-    value: 'family',
-  },
-  {
-    label: 'Évangélisation',
-    value: 'evangelism',
-  },
-  {
-    label: 'Recommandation',
-    value: 'recommendation',
-  },
-  {
-    label: 'Réseaux sociaux',
-    value: 'social_media',
-  },
-  {
-    label: 'Site Internet',
-    value: 'website',
-  },
-  {
-    label: 'Autre',
-    value: 'other',
-  },
-];
+    {
+      label: 'Culte',
+      value: 'service',
+    },
+    {
+      label: 'Famille',
+      value: 'family',
+    },
+    {
+      label: 'Évangélisation',
+      value: 'evangelism',
+    },
+    {
+      label: 'Recommandation',
+      value: 'recommendation',
+    },
+    {
+      label: 'Réseaux sociaux',
+      value: 'social_media',
+    },
+    {
+      label: 'Site Internet',
+      value: 'website',
+    },
+    {
+      label: 'Autre',
+      value: 'other',
+    },
+  ];
 
 const contactChannelOptions: Array<{
   label: string;
   value: ContactChannel;
 }> = [
-  {
-    label: 'WhatsApp',
-    value: 'whatsapp',
-  },
-  {
-    label: 'Téléphone',
-    value: 'phone',
-  },
-  {
-    label: 'En présentiel',
-    value: 'in_person',
-  },
-  {
-    label: 'Email',
-    value: 'email',
-  },
-  {
-    label: 'Site Internet',
-    value: 'website',
-  },
-  {
-    label: 'Autre',
-    value: 'other',
-  },
-];
+    {
+      label: 'WhatsApp',
+      value: 'whatsapp',
+    },
+    {
+      label: 'Téléphone',
+      value: 'phone',
+    },
+    {
+      label: 'En présentiel',
+      value: 'in_person',
+    },
+    {
+      label: 'Email',
+      value: 'email',
+    },
+    {
+      label: 'Site Internet',
+      value: 'website',
+    },
+    {
+      label: 'Autre',
+      value: 'other',
+    },
+  ];
 
 export default function PersonFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -158,6 +160,7 @@ export default function PersonFormScreen() {
   const [contactChannelError, setContactChannelError] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(id));
 
   useEffect(() => {
@@ -398,6 +401,75 @@ export default function PersonFormScreen() {
   async function continueDespiteNameDuplicate() {
     setNameDuplicates([]);
     await savePerson();
+  }
+
+  async function archiveCurrentPerson() {
+    if (!id || isSaving || isArchiving) {
+      return;
+    }
+
+    try {
+      setIsArchiving(true);
+
+      await updatePerson(id, {
+        isArchived: true,
+      });
+
+      Alert.alert(
+        'Personne archivée',
+        'La fiche a été archivée avec succès.'
+      );
+
+      router.back();
+    } catch (error) {
+      console.error(
+        'Erreur lors de l’archivage de la personne :',
+        error
+      );
+
+      Alert.alert(
+        'Erreur',
+        'Impossible d’archiver cette personne.'
+      );
+    } finally {
+      setIsArchiving(false);
+    }
+  }
+
+  function handleArchive() {
+    if (!id || isSaving || isArchiving) {
+      return;
+    }
+
+    const message =
+      `Voulez-vous vraiment archiver la fiche de ${fullName.trim()} ? ` +
+      'Elle ne sera plus visible dans la liste active, mais elle ne sera pas supprimée.';
+
+    if (Platform.OS === 'web') {
+      const isConfirmed = window.confirm(message);
+
+      if (isConfirmed) {
+        archiveCurrentPerson();
+      }
+
+      return;
+    }
+
+    Alert.alert(
+      'Archiver la personne',
+      message,
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+        {
+          text: 'Archiver',
+          style: 'destructive',
+          onPress: archiveCurrentPerson,
+        },
+      ]
+    );
   }
 
   if (isLoading) {
@@ -742,6 +814,55 @@ export default function PersonFormScreen() {
               onPress={handleSave}
             />
           )}
+
+          {id &&
+            !phoneDuplicate &&
+            nameDuplicates.length === 0 && (
+              <View
+                style={{
+                  marginTop: 8,
+                  paddingTop: 18,
+                  borderTopWidth: 1,
+                  borderTopColor: COLORS.border,
+                }}
+              >
+                <Text
+                  style={{
+                    marginBottom: 12,
+                    color: COLORS.muted,
+                    lineHeight: 20,
+                  }}
+                >
+                  L’archivage retire la personne de la liste active sans
+                  supprimer son dossier.
+                </Text>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleArchive}
+                  disabled={isSaving || isArchiving}
+                  style={{
+                    backgroundColor: '#C62828',
+                    paddingVertical: 15,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    opacity: isSaving || isArchiving ? 0.6 : 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: COLORS.white,
+                      fontSize: 16,
+                      fontWeight: '700',
+                    }}
+                  >
+                    {isArchiving
+                      ? 'Archivage...'
+                      : 'Archiver la personne'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
         </View>
       </ScrollView>
     </SafeAreaView>
