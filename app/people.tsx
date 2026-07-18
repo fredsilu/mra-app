@@ -1,7 +1,10 @@
-//app/peopple.tsx
-import { useCallback, useEffect, useState } from 'react';
-import { router } from 'expo-router';
+//app/people.tsx
+
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   SafeAreaView,
   Text,
@@ -16,15 +19,66 @@ import { Person } from '../src/types/person.types';
 
 export default function PeopleScreen() {
   const [people, setPeople] = useState<Person[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadPeople = useCallback(async () => {
-    const result = await getPeople();
-    setPeople(result);
+  const loadPeople = useCallback(async (refreshing = false) => {
+    try {
+      if (refreshing) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      const result = await getPeople();
+
+      const sortedPeople = [...result].sort((a, b) =>
+        a.fullName.localeCompare(b.fullName)
+      );
+
+      setPeople(sortedPeople);
+    } catch (error) {
+      console.error('Erreur lors du chargement des personnes :', error);
+
+      Alert.alert(
+        'Erreur',
+        'Impossible de charger la liste des personnes.'
+      );
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   }, []);
 
-  useEffect(() => {
-    loadPeople();
-  }, [loadPeople]);
+  useFocusEffect(
+    useCallback(() => {
+      loadPeople();
+    }, [loadPeople])
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: COLORS.light,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <ActivityIndicator size="large" />
+
+        <Text
+          style={{
+            marginTop: 12,
+            color: COLORS.text,
+          }}
+        >
+          Chargement des personnes...
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -38,6 +92,7 @@ export default function PeopleScreen() {
         style={{
           fontSize: 26,
           fontWeight: '700',
+          color: COLORS.text,
           marginBottom: 20,
         }}
       >
@@ -54,24 +109,76 @@ export default function PeopleScreen() {
       <FlatList
         data={people}
         keyExtractor={(item) => item.id}
+        refreshing={isRefreshing}
+        onRefresh={() => loadPeople(true)}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: 20,
+        }}
         renderItem={({ item }) => (
           <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: '/person-form',
+                params: { id: item.id },
+              })
+            }
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: COLORS.white,
               padding: 16,
               borderRadius: 12,
               marginBottom: 10,
+              borderWidth: 1,
+              borderColor: COLORS.border,
             }}
           >
-            <Text style={{ fontWeight: '700', fontSize: 16 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: COLORS.text,
+              }}
+            >
               {item.fullName}
             </Text>
 
-            <Text>{item.phone || '-'}</Text>
+            <Text
+              style={{
+                marginTop: 5,
+                color: COLORS.muted,
+              }}
+            >
+              {item.mraNumber || 'Numéro MRA non attribué'}
+            </Text>
+
+            <Text
+              style={{
+                marginTop: 3,
+                color: COLORS.muted,
+              }}
+            >
+              {item.phone || 'Aucun téléphone'}
+            </Text>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <Text>Aucune personne enregistrée.</Text>
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 30,
+            }}
+          >
+            <Text
+              style={{
+                color: COLORS.muted,
+                textAlign: 'center',
+              }}
+            >
+              Aucune personne enregistrée.
+            </Text>
+          </View>
         }
       />
     </SafeAreaView>
