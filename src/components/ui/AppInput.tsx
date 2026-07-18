@@ -1,3 +1,4 @@
+//src/components/ui/AppInput.tsx
 import { TextInput, TextInputProps } from 'react-native';
 import { COLORS } from '../../constants/theme';
 
