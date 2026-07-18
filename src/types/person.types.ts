@@ -1,45 +1,88 @@
 //src/types/person.types.ts
+
 export type Gender = 'male' | 'female';
 
 export type ChurchStatus =
-    | 'visitor'
-    | 'new'
-    | 'member'
-    | 'former_member'
-    | 'external';
+  | 'visitor'
+  | 'new'
+  | 'member'
+  | 'former_member'
+  | 'external';
 
-export type PersonSource =
-    | 'church'
-    | 'service'
-    | 'family'
-    | 'recommendation'
-    | 'other';
+export type PersonOrigin =
+  | 'service'
+  | 'family'
+  | 'evangelism'
+  | 'recommendation'
+  | 'social_media'
+  | 'website'
+  | 'other';
+
+export type ContactChannel =
+  | 'whatsapp'
+  | 'phone'
+  | 'in_person'
+  | 'email'
+  | 'website'
+  | 'other';
+
+/**
+ * Ancien type conservé temporairement pour permettre
+ * la lecture des anciennes fiches Firestore.
+ *
+ * Les nouvelles fiches doivent utiliser :
+ * - origin
+ * - contactChannel
+ */
+export type LegacyPersonSource =
+  | 'church'
+  | 'service'
+  | 'family'
+  | 'recommendation'
+  | 'other';
 
 export interface Person {
-    id: string;
+  id: string;
 
-    mraNumber: string;
+  mraNumber: string;
 
-    fullName: string;
+  fullName: string;
 
-    gender: Gender;
+  gender: Gender;
 
-    birthDate?: Date;
+  birthDate?: Date;
 
-    phone?: string;
+  phone?: string;
 
-    email?: string;
+  email?: string;
 
-    address?: string;
+  address?: string;
 
-    churchStatus: ChurchStatus;
+  churchStatus: ChurchStatus;
 
-    source: PersonSource;
+  /**
+   * Origine de la personne :
+   * culte, famille, évangélisation, recommandation, etc.
+   */
+  origin?: PersonOrigin;
 
-    assignedCounselorIds: string[];
+  /**
+   * Canal par lequel la personne a contacté le MRA :
+   * WhatsApp, téléphone, présentiel, etc.
+   */
+  contactChannel?: ContactChannel;
 
-    isArchived: boolean;
+  /**
+   * Ancien champ Firestore.
+   * À ne plus utiliser pour les nouvelles fiches.
+   */
+  source?: LegacyPersonSource;
 
-    createdAt?: Date;
-updatedAt?: Date;
+  assignedCounselorIds: string[];
+
+  isArchived: boolean;
+
+  createdAt?: Date;
+
+  updatedAt?: Date;
 }
