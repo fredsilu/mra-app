@@ -9,9 +9,12 @@ import { AppInput } from '../src/components/ui/AppInput';
 import { COLORS } from '../src/constants/theme';
 import {
   createPerson,
+  findPeopleByExactName,
+  findPersonByPhone,
   getPersonById,
   updatePerson,
 } from '../src/services/person.service';
+import { Person } from '../src/types/person.types';
 
 export default function PersonFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -20,6 +23,10 @@ export default function PersonFormScreen() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+
+  const [phoneDuplicate, setPhoneDuplicate] = useState<Person | null>(null);
+  const [nameDuplicates, setNameDuplicates] = useState<Person[]>([]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(id));
 
@@ -44,7 +51,10 @@ export default function PersonFormScreen() {
         setEmail(person.email ?? '');
         setAddress(person.address ?? '');
       } catch (error) {
-        console.error('Erreur lors du chargement de la personne :', error);
+        console.error(
+          'Erreur lors du chargement de la personne :',
+          error
+        );
 
         Alert.alert(
           'Erreur',
@@ -58,35 +68,45 @@ export default function PersonFormScreen() {
     loadPerson();
   }, [id]);
 
-  async function handleSave() {
-    const normalizedFullName = fullName.trim();
+  function handleFullNameChange(value: string) {
+    setFullName(value);
+    setNameDuplicates([]);
+  }
 
-    if (!normalizedFullName) {
-      Alert.alert('Validation', 'Le nom est obligatoire.');
-      return;
-    }
+  function handlePhoneChange(value: string) {
+    setPhone(value);
+    setPhoneDuplicate(null);
+  }
 
-    if (isSaving) {
-      return;
-    }
+  function openPerson(personId: string) {
+    setPhoneDuplicate(null);
+    setNameDuplicates([]);
 
+    router.replace({
+      pathname: '/person-form',
+      params: {
+        id: personId,
+      },
+    });
+  }
+
+  async function savePerson(normalizedFullName: string) {
     try {
       setIsSaving(true);
 
+      const personData = {
+        fullName: normalizedFullName,
+        phone: phone.trim(),
+        email: email.trim(),
+        address: address.trim(),
+      };
+
       if (id) {
-        await updatePerson(id, {
-          fullName: normalizedFullName,
-          phone: phone.trim(),
-          email: email.trim(),
-          address: address.trim(),
-        });
+        await updatePerson(id, personData);
       } else {
         await createPerson({
-          fullName: normalizedFullName,
+          ...personData,
           gender: 'male',
-          phone: phone.trim(),
-          email: email.trim(),
-          address: address.trim(),
           churchStatus: 'visitor',
           source: 'other',
           assignedCounselorIds: [],
@@ -121,6 +141,85 @@ export default function PersonFormScreen() {
     }
   }
 
+  async function handleSave() {
+    const normalizedFullName = fullName.trim();
+
+    if (!normalizedFullName) {
+      Alert.alert('Validation', 'Le nom est obligatoire.');
+      return;
+    }
+
+    if (isSaving) {
+      return;
+    }
+
+    setPhoneDuplicate(null);
+    setNameDuplicates([]);
+
+    try {
+      setIsSaving(true);
+
+      const normalizedPhoneInput = phone.trim();
+
+      /*
+       * Le téléphone est prioritaire.
+       * Un téléphone identique bloque l'enregistrement.
+       */
+      if (normalizedPhoneInput) {
+        const existingPerson = await findPersonByPhone(
+          normalizedPhoneInput
+        );
+
+        const isAnotherPerson =
+          existingPerson && existingPerson.id !== id;
+
+        if (isAnotherPerson) {
+          setPhoneDuplicate(existingPerson);
+          return;
+        }
+      }
+
+      /*
+       * Le nom identique produit seulement un avertissement.
+       * La fiche courante est exclue en mode modification.
+       */
+      const existingPeople = await findPeopleByExactName(
+        normalizedFullName
+      );
+
+      const otherPeopleWithSameName = existingPeople.filter(
+        (person) => person.id !== id
+      );
+
+      if (otherPeopleWithSameName.length > 0) {
+        setNameDuplicates(otherPeopleWithSameName);
+        return;
+      }
+
+      await savePerson(normalizedFullName);
+    } catch (error) {
+      console.error(
+        'Erreur lors de la vérification des doublons :',
+        error
+      );
+
+      Alert.alert(
+        'Erreur',
+        'Impossible de vérifier les éventuels doublons.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function continueDespiteNameDuplicate() {
+    const normalizedFullName = fullName.trim();
+
+    setNameDuplicates([]);
+
+    await savePerson(normalizedFullName);
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView
@@ -131,7 +230,9 @@ export default function PersonFormScreen() {
           justifyContent: 'center',
         }}
       >
-        <Text style={{ color: COLORS.text }}>Chargement...</Text>
+        <Text style={{ color: COLORS.text }}>
+          Chargement...
+        </Text>
       </SafeAreaView>
     );
   }
@@ -159,7 +260,7 @@ export default function PersonFormScreen() {
         <AppInput
           placeholder="Nom complet"
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={handleFullNameChange}
           autoCapitalize="words"
         />
 
@@ -167,7 +268,7 @@ export default function PersonFormScreen() {
           placeholder="Téléphone"
           keyboardType="phone-pad"
           value={phone}
-          onChangeText={setPhone}
+          onChangeText={handlePhoneChange}
         />
 
         <AppInput
@@ -184,16 +285,161 @@ export default function PersonFormScreen() {
           onChangeText={setAddress}
         />
 
-        <AppButton
-          title={
-            isSaving
-              ? 'Enregistrement...'
-              : id
-                ? 'Modifier'
-                : 'Enregistrer'
-          }
-          onPress={handleSave}
-        />
+        {phoneDuplicate && (
+          <View
+            style={{
+              padding: 16,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: '#C62828',
+              backgroundColor: '#FFEBEE',
+              gap: 12,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: '#B71C1C',
+              }}
+            >
+              Téléphone déjà utilisé
+            </Text>
+
+            <Text
+              style={{
+                color: COLORS.text,
+                lineHeight: 21,
+              }}
+            >
+              Ce numéro appartient déjà à{' '}
+              <Text style={{ fontWeight: '700' }}>
+                {phoneDuplicate.fullName}
+              </Text>
+              , dossier {phoneDuplicate.mraNumber}.
+            </Text>
+
+            {phoneDuplicate.isArchived && (
+              <Text
+                style={{
+                  color: '#B71C1C',
+                  fontWeight: '600',
+                }}
+              >
+                Cette fiche est actuellement archivée.
+              </Text>
+            )}
+
+            <AppButton
+              title="Ouvrir la fiche existante"
+              onPress={() => openPerson(phoneDuplicate.id)}
+            />
+
+            <AppButton
+              title="Fermer l’avertissement"
+              onPress={() => setPhoneDuplicate(null)}
+            />
+          </View>
+        )}
+
+        {nameDuplicates.length > 0 && (
+          <View
+            style={{
+              padding: 16,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: '#EF6C00',
+              backgroundColor: '#FFF3E0',
+              gap: 12,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: '#E65100',
+              }}
+            >
+              Nom déjà enregistré
+            </Text>
+
+            <Text
+              style={{
+                color: COLORS.text,
+                lineHeight: 21,
+              }}
+            >
+              {nameDuplicates.length === 1
+                ? 'Une personne porte déjà exactement ce nom.'
+                : `${nameDuplicates.length} personnes portent déjà exactement ce nom.`}
+            </Text>
+
+            {nameDuplicates.map((person) => (
+              <View
+                key={person.id}
+                style={{
+                  padding: 12,
+                  borderRadius: 8,
+                  backgroundColor: '#FFFFFF',
+                  gap: 4,
+                }}
+              >
+                <Text
+                  style={{
+                    color: COLORS.text,
+                    fontWeight: '700',
+                  }}
+                >
+                  {person.fullName}
+                </Text>
+
+                <Text style={{ color: COLORS.text }}>
+                  {person.mraNumber}
+                  {person.phone ? ` • ${person.phone}` : ''}
+                </Text>
+
+                {person.isArchived && (
+                  <Text
+                    style={{
+                      color: '#E65100',
+                      fontWeight: '600',
+                    }}
+                  >
+                    Fiche archivée
+                  </Text>
+                )}
+
+                <AppButton
+                  title="Ouvrir cette fiche"
+                  onPress={() => openPerson(person.id)}
+                />
+              </View>
+            ))}
+
+            <AppButton
+              title="Continuer malgré l’avertissement"
+              onPress={continueDespiteNameDuplicate}
+            />
+
+            <AppButton
+              title="Annuler"
+              onPress={() => setNameDuplicates([])}
+            />
+          </View>
+        )}
+
+        {!phoneDuplicate && nameDuplicates.length === 0 && (
+          <AppButton
+            title={
+              isSaving
+                ? 'Vérification...'
+                : id
+                  ? 'Modifier'
+                  : 'Enregistrer'
+            }
+            onPress={handleSave}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

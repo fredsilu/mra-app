@@ -1,7 +1,7 @@
-//app/people.tsx
+// app/people.tsx
 
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,12 +13,14 @@ import {
 } from 'react-native';
 
 import { AppButton } from '../src/components/ui/AppButton';
+import { AppInput } from '../src/components/ui/AppInput';
 import { COLORS } from '../src/constants/theme';
 import { getPeople } from '../src/services/person.service';
 import { Person } from '../src/types/person.types';
 
 export default function PeopleScreen() {
   const [people, setPeople] = useState<Person[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -55,6 +57,26 @@ export default function PeopleScreen() {
       loadPeople();
     }, [loadPeople])
   );
+
+  const filteredPeople = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return people;
+    }
+
+    return people.filter((person) => {
+      const fullName = person.fullName.toLowerCase();
+      const phone = person.phone?.toLowerCase() ?? '';
+      const mraNumber = person.mraNumber?.toLowerCase() ?? '';
+
+      return (
+        fullName.includes(normalizedSearch) ||
+        phone.includes(normalizedSearch) ||
+        mraNumber.includes(normalizedSearch)
+      );
+    });
+  }, [people, searchQuery]);
 
   if (isLoading) {
     return (
@@ -104,10 +126,27 @@ export default function PeopleScreen() {
         onPress={() => router.push('/person-form')}
       />
 
-      <View style={{ height: 20 }} />
+      <View style={{ height: 14 }} />
+
+      <AppInput
+        placeholder="Rechercher par nom, téléphone ou numéro MRA"
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        autoCapitalize="none"
+      />
+
+      <Text
+        style={{
+          marginTop: 12,
+          marginBottom: 12,
+          color: COLORS.muted,
+        }}
+      >
+        {filteredPeople.length} personne(s)
+      </Text>
 
       <FlatList
-        data={people}
+        data={filteredPeople}
         keyExtractor={(item) => item.id}
         refreshing={isRefreshing}
         onRefresh={() => loadPeople(true)}
@@ -176,7 +215,9 @@ export default function PeopleScreen() {
                 textAlign: 'center',
               }}
             >
-              Aucune personne enregistrée.
+              {searchQuery.trim()
+                ? 'Aucune personne ne correspond à cette recherche.'
+                : 'Aucune personne enregistrée.'}
             </Text>
           </View>
         }
