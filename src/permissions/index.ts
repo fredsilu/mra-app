@@ -1,3 +1,4 @@
+//src/permissions/index.ts
 import { UserProfile } from '../types/user.types';
 
 export function isResponsable(profile: UserProfile | null) {

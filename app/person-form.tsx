@@ -274,42 +274,72 @@ export default function PersonFormScreen() {
   }
 
   async function savePerson() {
-    if (
-      !gender ||
-      !churchStatus ||
-      !origin ||
-      !contactChannel
-    ) {
+    const personData = {
+      fullName: fullName.trim(),
+      gender: gender as Gender,
+      churchStatus: churchStatus as ChurchStatus,
+      origin: origin as PersonOrigin,
+      contactChannel: contactChannel as ContactChannel,
+      phone: phone.trim(),
+      email: email.trim(),
+      address: address.trim(),
+    };
+
+    if (id) {
+      await updatePerson(id, personData);
+    } else {
+      await createPerson({
+        ...personData,
+        assignedCounselorIds: [],
+        isArchived: false,
+      });
+    }
+  }
+
+  async function handleSave() {
+    if (isSaving || isArchiving) {
+      return;
+    }
+
+    if (!validateForm()) {
       Alert.alert(
         'Validation',
-        'Veuillez compléter tous les champs obligatoires.'
+        'Veuillez corriger les champs indiqués.'
       );
       return;
     }
 
+    clearDuplicateWarnings();
+    setIsSaving(true);
+
     try {
-      setIsSaving(true);
+      const normalizedPhoneInput = phone.trim();
 
-      const personData = {
-        fullName: fullName.trim(),
-        gender,
-        churchStatus,
-        origin,
-        contactChannel,
-        phone: phone.trim(),
-        email: email.trim(),
-        address: address.trim(),
-      };
+      if (normalizedPhoneInput) {
+        const existingPerson = await findPersonByPhone(
+          normalizedPhoneInput
+        );
 
-      if (id) {
-        await updatePerson(id, personData);
-      } else {
-        await createPerson({
-          ...personData,
-          assignedCounselorIds: [],
-          isArchived: false,
-        });
+        if (existingPerson && existingPerson.id !== id) {
+          setPhoneDuplicate(existingPerson);
+          return;
+        }
       }
+
+      const existingPeople = await findPeopleByExactName(
+        fullName.trim()
+      );
+
+      const otherPeopleWithSameName = existingPeople.filter(
+        (person) => person.id !== id
+      );
+
+      if (otherPeopleWithSameName.length > 0) {
+        setNameDuplicates(otherPeopleWithSameName);
+        return;
+      }
+
+      await savePerson();
 
       Alert.alert(
         'Succès',
@@ -338,69 +368,42 @@ export default function PersonFormScreen() {
     }
   }
 
-  async function handleSave() {
-    if (!validateForm()) {
-      Alert.alert(
-        'Validation',
-        'Veuillez compléter les champs obligatoires.'
-      );
+  async function continueDespiteNameDuplicate() {
+    if (isSaving || isArchiving) {
       return;
     }
 
-    if (isSaving) {
-      return;
-    }
-
-    clearDuplicateWarnings();
+    setNameDuplicates([]);
+    setIsSaving(true);
 
     try {
-      setIsSaving(true);
-
-      const normalizedPhoneInput = phone.trim();
-
-      if (normalizedPhoneInput) {
-        const existingPerson = await findPersonByPhone(
-          normalizedPhoneInput
-        );
-
-        if (existingPerson && existingPerson.id !== id) {
-          setPhoneDuplicate(existingPerson);
-          return;
-        }
-      }
-
-      const existingPeople = await findPeopleByExactName(
-        fullName.trim()
-      );
-
-      const otherPeopleWithSameName = existingPeople.filter(
-        (person) => person.id !== id
-      );
-
-      if (otherPeopleWithSameName.length > 0) {
-        setNameDuplicates(otherPeopleWithSameName);
-        return;
-      }
-
       await savePerson();
+
+      Alert.alert(
+        'Succès',
+        id
+          ? 'La personne a été modifiée avec succès.'
+          : 'La personne a été créée avec succès.'
+      );
+
+      router.back();
     } catch (error) {
       console.error(
-        'Erreur lors de la vérification des doublons :',
+        id
+          ? 'Erreur lors de la modification de la personne :'
+          : 'Erreur lors de la création de la personne :',
         error
       );
 
       Alert.alert(
         'Erreur',
-        'Impossible de vérifier les éventuels doublons.'
+        id
+          ? 'Impossible de modifier la personne.'
+          : "Impossible d'enregistrer la personne."
       );
     } finally {
       setIsSaving(false);
     }
-  }
-
-  async function continueDespiteNameDuplicate() {
-    setNameDuplicates([]);
-    await savePerson();
   }
 
   async function archiveCurrentPerson() {
