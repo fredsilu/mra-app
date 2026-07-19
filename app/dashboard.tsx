@@ -1,24 +1,41 @@
 //app/dashboard.tsx
+
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import {
+  Alert,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+
 import { AppButton } from '../src/components/ui/AppButton';
 import { COLORS } from '../src/constants/theme';
 import { useAuth } from '../src/contexts/AuthContext';
-
 import { canManageUsers } from '../src/permissions';
 
 export default function DashboardScreen() {
   const { user, profile, logout } = useAuth();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const [isLoggingOut, setIsLoggingOut] =
+    useState(false);
 
   async function handleLogout() {
+    if (isLoggingOut) {
+      return;
+    }
+
     try {
       setIsLoggingOut(true);
+
       await logout();
+
       router.replace('/login');
     } catch (error) {
-      console.error('Erreur lors de la déconnexion :', error);
+      console.error(
+        'Erreur lors de la déconnexion :',
+        error
+      );
 
       Alert.alert(
         'Déconnexion impossible',
@@ -30,13 +47,17 @@ export default function DashboardScreen() {
   }
 
   return (
-    <View
+    <ScrollView
       style={{
         flex: 1,
         backgroundColor: COLORS.light,
-        alignItems: 'center',
+      }}
+      contentContainerStyle={{
+        flexGrow: 1,
         justifyContent: 'center',
+        alignItems: 'center',
         padding: 24,
+        paddingBottom: 40,
       }}
     >
       <Text
@@ -72,7 +93,7 @@ export default function DashboardScreen() {
         Rôle : {profile?.role ?? 'Profil non configuré'}
       </Text>
 
-      {!profile && (
+      {!profile ? (
         <Text
           style={{
             marginTop: 16,
@@ -82,29 +103,48 @@ export default function DashboardScreen() {
         >
           Aucun profil MRA n’a été trouvé dans Firestore.
         </Text>
-      )}
-      <Text style={{ marginTop: 10 }}>
-        Peut gérer les utilisateurs : {canManageUsers(profile) ? 'Oui' : 'Non'}
-      </Text>
+      ) : null}
 
-     <View
-  style={{
-    width: '100%',
-    maxWidth: 360,
-    marginTop: 32,
-    gap: 12,
-  }}
->
-  <AppButton
-    title="Personnes"
-    onPress={() => router.push('/people')}
-  />
+      <View
+        style={{
+          width: '100%',
+          maxWidth: 360,
+          marginTop: 32,
+          gap: 12,
+        }}
+      >
+        <AppButton
+          title="Personnes"
+          onPress={() => router.push('/people')}
+        />
 
-  <AppButton
-    title={isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
-    onPress={handleLogout}
-  />
-</View>
-    </View>
+        <AppButton
+          title="Demandes"
+          onPress={() => router.push('/requests')}
+        />
+
+        {canManageUsers(profile) ? (
+          <AppButton
+            title="Utilisateurs"
+            onPress={() => router.push('/users')}
+          />
+        ) : null}
+
+        <View
+          style={{
+            marginTop: 12,
+          }}
+        >
+          <AppButton
+            title={
+              isLoggingOut
+                ? 'Déconnexion...'
+                : 'Se déconnecter'
+            }
+            onPress={handleLogout}
+          />
+        </View>
+      </View>
+    </ScrollView>
   );
 }

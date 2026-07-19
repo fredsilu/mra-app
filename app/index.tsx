@@ -1,3 +1,5 @@
+//app/index.tsx
+
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { APP_FULL_NAME, APP_NAME, COLORS } from '../src/constants/theme';
