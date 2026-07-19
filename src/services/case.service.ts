@@ -2,7 +2,6 @@
 
 import {
   Timestamp,
-  addDoc,
   collection,
   doc,
   getDoc,
@@ -10,7 +9,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 
 import { db } from '../config/firebase';
@@ -23,9 +22,17 @@ import {
   CreateHelpCaseData,
   HelpCase,
   UpdateHelpCaseData,
+  CASE_STATUS_LABELS,
 } from '../types/case.types';
 
-const COLLECTION_NAME = 'cases';
+import {
+  CaseHistoryAction,
+} from '../types/case-history.types';
+
+const CASES_COLLECTION_NAME = 'cases';
+
+const HISTORY_COLLECTION_NAME =
+  'case_history';
 
 function readTimestamp(
   value: unknown
@@ -60,9 +67,10 @@ function mapHelpCase(
     personId:
       readString(data.personId) ?? '',
 
-    assignedCounselorId: readString(
-      data.assignedCounselorId
-    ),
+    assignedCounselorId:
+      readString(
+        data.assignedCounselorId
+      ),
 
     status:
       (data.status as CaseStatus) ??
@@ -76,10 +84,12 @@ function mapHelpCase(
       readString(data.requestTitle) ?? '',
 
     requestDescription:
-      readString(data.requestDescription) ??
-      '',
+      readString(
+        data.requestDescription
+      ) ?? '',
 
-    notes: readString(data.notes),
+    notes:
+      readString(data.notes),
 
     openedAt:
       readTimestamp(data.openedAt) ??
@@ -93,68 +103,97 @@ function mapHelpCase(
     createdBy:
       readString(data.createdBy) ?? '',
 
-    updatedAt: readTimestamp(
-      data.updatedAt
-    ),
+    updatedAt:
+      readTimestamp(data.updatedAt),
 
-    updatedBy: readString(
-      data.updatedBy
-    ),
+    updatedBy:
+      readString(data.updatedBy),
 
-    assignedAt: readTimestamp(
-      data.assignedAt
-    ),
+    assignedAt:
+      readTimestamp(data.assignedAt),
 
-    closedAt: readTimestamp(
-      data.closedAt
-    ),
+    closedAt:
+      readTimestamp(data.closedAt),
 
-    closedBy: readString(
-      data.closedBy
-    ),
+    closedBy:
+      readString(data.closedBy),
 
-    closingReason: readString(
-      data.closingReason
-    ),
+    closingReason:
+      readString(data.closingReason),
 
-    cancelledAt: readTimestamp(
-      data.cancelledAt
-    ),
+    cancelledAt:
+      readTimestamp(data.cancelledAt),
 
-    cancelledBy: readString(
-      data.cancelledBy
-    ),
+    cancelledBy:
+      readString(data.cancelledBy),
 
-    cancellationReason: readString(
-      data.cancellationReason
-    ),
+    cancellationReason:
+      readString(
+        data.cancellationReason
+      ),
   };
 }
 
 function buildCaseNumber(
   documentId: string
 ): string {
-  const year = new Date().getFullYear();
+  const year =
+    new Date().getFullYear();
 
   const shortId = documentId
-    .replace(/[^a-zA-Z0-9]/g, '')
+    .replace(
+      /[^a-zA-Z0-9]/g,
+      ''
+    )
     .slice(0, 6)
     .toUpperCase();
 
   return `MRA-${year}-${shortId}`;
 }
 
+function createHistoryReference() {
+  return doc(
+    collection(
+      db,
+      HISTORY_COLLECTION_NAME
+    )
+  );
+}
+
+function buildHistoryData(
+  caseId: string,
+  action: CaseHistoryAction,
+  description: string,
+  performedBy: string
+) {
+  return {
+    caseId,
+    action,
+    description,
+    performedBy,
+    performedAt: serverTimestamp(),
+  };
+}
+
 export async function createCase(
   data: CreateHelpCaseData
 ): Promise<string> {
+  const normalizedPersonId =
+    data.personId.trim();
+
   const normalizedTitle =
     data.requestTitle.trim();
 
   const normalizedDescription =
     data.requestDescription.trim();
 
-  if (!data.personId.trim()) {
-    throw new Error('PERSON_REQUIRED');
+  const normalizedCreatedBy =
+    data.createdBy.trim();
+
+  if (!normalizedPersonId) {
+    throw new Error(
+      'PERSON_REQUIRED'
+    );
   }
 
   if (!normalizedTitle) {
@@ -169,56 +208,99 @@ export async function createCase(
     );
   }
 
-  if (!data.createdBy.trim()) {
-    throw new Error('CREATED_BY_REQUIRED');
+  if (!normalizedCreatedBy) {
+    throw new Error(
+      'CREATED_BY_REQUIRED'
+    );
   }
 
-  const documentReference =
-    await addDoc(
-      collection(db, COLLECTION_NAME),
-      {
-        caseNumber: '',
-
-        personId: data.personId,
-
-        status: 'new',
-        priority: data.priority,
-
-        requestTitle: normalizedTitle,
-        requestDescription:
-          normalizedDescription,
-
-        notes: data.notes?.trim() ?? '',
-
-        openedAt: serverTimestamp(),
-        openedBy: data.createdBy,
-
-        createdAt: serverTimestamp(),
-        createdBy: data.createdBy,
-
-        updatedAt: serverTimestamp(),
-        updatedBy: data.createdBy,
-      }
-    );
-
-  const caseNumber = buildCaseNumber(
-    documentReference.id
+  const caseReference = doc(
+    collection(
+      db,
+      CASES_COLLECTION_NAME
+    )
   );
 
-  await updateDoc(documentReference, {
-    caseNumber,
-    updatedAt: serverTimestamp(),
-    updatedBy: data.createdBy,
-  });
+  const historyReference =
+    createHistoryReference();
 
-  return documentReference.id;
+  const caseNumber =
+    buildCaseNumber(
+      caseReference.id
+    );
+
+  const batch = writeBatch(db);
+
+  batch.set(
+    caseReference,
+    {
+      caseNumber,
+
+      personId:
+        normalizedPersonId,
+
+      status: 'new',
+      priority: data.priority,
+
+      requestTitle:
+        normalizedTitle,
+
+      requestDescription:
+        normalizedDescription,
+
+      notes:
+        data.notes?.trim() ?? '',
+
+      openedAt:
+        serverTimestamp(),
+
+      openedBy:
+        normalizedCreatedBy,
+
+      createdAt:
+        serverTimestamp(),
+
+      createdBy:
+        normalizedCreatedBy,
+
+      updatedAt:
+        serverTimestamp(),
+
+      updatedBy:
+        normalizedCreatedBy,
+    }
+  );
+
+  batch.set(
+    historyReference,
+    buildHistoryData(
+      caseReference.id,
+      'CASE_CREATED',
+      `Création du dossier ${caseNumber}.`,
+      normalizedCreatedBy
+    )
+  );
+
+  await batch.commit();
+
+  return caseReference.id;
 }
 
 export async function getCase(
   id: string
 ): Promise<HelpCase | null> {
+  const normalizedId = id.trim();
+
+  if (!normalizedId) {
+    return null;
+  }
+
   const snapshot = await getDoc(
-    doc(db, COLLECTION_NAME, id)
+    doc(
+      db,
+      CASES_COLLECTION_NAME,
+      normalizedId
+    )
   );
 
   if (!snapshot.exists()) {
@@ -236,8 +318,14 @@ export async function getCases(): Promise<
 > {
   const snapshot = await getDocs(
     query(
-      collection(db, COLLECTION_NAME),
-      orderBy('createdAt', 'desc')
+      collection(
+        db,
+        CASES_COLLECTION_NAME
+      ),
+      orderBy(
+        'createdAt',
+        'desc'
+      )
     )
   );
 
@@ -254,19 +342,42 @@ export async function updateCase(
   id: string,
   data: UpdateHelpCaseData
 ): Promise<void> {
+  const normalizedId = id.trim();
+
+  const normalizedUpdatedBy =
+    data.updatedBy.trim();
+
+  if (!normalizedId) {
+    throw new Error(
+      'CASE_ID_REQUIRED'
+    );
+  }
+
+  if (!normalizedUpdatedBy) {
+    throw new Error(
+      'UPDATED_BY_REQUIRED'
+    );
+  }
+
   const updateData: Record<
     string,
     unknown
   > = {
-    updatedAt: serverTimestamp(),
-    updatedBy: data.updatedBy,
+    updatedAt:
+      serverTimestamp(),
+
+    updatedBy:
+      normalizedUpdatedBy,
   };
 
   if (data.priority !== undefined) {
-    updateData.priority = data.priority;
+    updateData.priority =
+      data.priority;
   }
 
-  if (data.requestTitle !== undefined) {
+  if (
+    data.requestTitle !== undefined
+  ) {
     const normalizedTitle =
       data.requestTitle.trim();
 
@@ -298,57 +409,212 @@ export async function updateCase(
   }
 
   if (data.notes !== undefined) {
-    updateData.notes = data.notes.trim();
+    updateData.notes =
+      data.notes.trim();
   }
 
-  await updateDoc(
-    doc(db, COLLECTION_NAME, id),
+  const caseReference = doc(
+    db,
+    CASES_COLLECTION_NAME,
+    normalizedId
+  );
+
+  const batch = writeBatch(db);
+
+  batch.update(
+    caseReference,
     updateData
   );
+
+  await batch.commit();
 }
 
 export async function assignCaseCounselor(
   caseId: string,
   data: AssignCaseCounselorData
 ): Promise<void> {
-  if (!data.assignedCounselorId.trim()) {
+  const normalizedCaseId =
+    caseId.trim();
+
+  const normalizedCounselorId =
+    data.assignedCounselorId.trim();
+
+  const normalizedUpdatedBy =
+    data.updatedBy.trim();
+
+  if (!normalizedCaseId) {
+    throw new Error(
+      'CASE_ID_REQUIRED'
+    );
+  }
+
+  if (!normalizedCounselorId) {
     throw new Error(
       'COUNSELOR_REQUIRED'
     );
   }
 
-  await updateDoc(
-    doc(db, COLLECTION_NAME, caseId),
+  if (!normalizedUpdatedBy) {
+    throw new Error(
+      'UPDATED_BY_REQUIRED'
+    );
+  }
+
+  const caseReference = doc(
+    db,
+    CASES_COLLECTION_NAME,
+    normalizedCaseId
+  );
+
+  const caseSnapshot =
+    await getDoc(caseReference);
+
+  if (!caseSnapshot.exists()) {
+    throw new Error(
+      'CASE_NOT_FOUND'
+    );
+  }
+
+  const currentCase =
+    mapHelpCase(
+      caseSnapshot.id,
+      caseSnapshot.data()
+    );
+
+  const isCounselorChange =
+    Boolean(
+      currentCase.assignedCounselorId
+    );
+
+  const historyAction:
+    CaseHistoryAction =
+      isCounselorChange
+        ? 'COUNSELOR_CHANGED'
+        : 'COUNSELOR_ASSIGNED';
+
+  const historyDescription =
+    isCounselorChange
+      ? 'Le conseiller affecté au dossier a été remplacé.'
+      : 'Un conseiller a été affecté au dossier.';
+
+  const historyReference =
+    createHistoryReference();
+
+  const batch = writeBatch(db);
+
+  batch.update(
+    caseReference,
     {
       assignedCounselorId:
-        data.assignedCounselorId,
+        normalizedCounselorId,
 
       status: 'assigned',
 
-      assignedAt: serverTimestamp(),
+      assignedAt:
+        serverTimestamp(),
 
-      updatedAt: serverTimestamp(),
-      updatedBy: data.updatedBy,
+      updatedAt:
+        serverTimestamp(),
+
+      updatedBy:
+        normalizedUpdatedBy,
     }
   );
+
+  batch.set(
+    historyReference,
+    buildHistoryData(
+      normalizedCaseId,
+      historyAction,
+      historyDescription,
+      normalizedUpdatedBy
+    )
+  );
+
+  await batch.commit();
 }
 
 export async function changeCaseStatus(
   caseId: string,
   data: ChangeCaseStatusData
 ): Promise<void> {
+  const normalizedCaseId =
+    caseId.trim();
+
+  const normalizedUpdatedBy =
+    data.updatedBy.trim();
+
+  if (!normalizedCaseId) {
+    throw new Error(
+      'CASE_ID_REQUIRED'
+    );
+  }
+
+  if (!normalizedUpdatedBy) {
+    throw new Error(
+      'UPDATED_BY_REQUIRED'
+    );
+  }
+
+  const caseReference = doc(
+    db,
+    CASES_COLLECTION_NAME,
+    normalizedCaseId
+  );
+
+  const caseSnapshot =
+    await getDoc(caseReference);
+
+  if (!caseSnapshot.exists()) {
+    throw new Error(
+      'CASE_NOT_FOUND'
+    );
+  }
+
+  const currentCase =
+    mapHelpCase(
+      caseSnapshot.id,
+      caseSnapshot.data()
+    );
+
+  if (
+    currentCase.status === data.status
+  ) {
+    return;
+  }
+
   const updateData: Record<
     string,
     unknown
   > = {
     status: data.status,
-    updatedAt: serverTimestamp(),
-    updatedBy: data.updatedBy,
+
+    updatedAt:
+      serverTimestamp(),
+
+    updatedBy:
+      normalizedUpdatedBy,
   };
+
+  let historyAction:
+    CaseHistoryAction =
+      'STATUS_CHANGED';
+
+  let historyDescription =
+    `Statut modifié de « ${
+      CASE_STATUS_LABELS[
+        currentCase.status
+      ]
+    } » à « ${
+      CASE_STATUS_LABELS[
+        data.status
+      ]
+    } ».`;
 
   if (data.status === 'closed') {
     const closingReason =
-      data.closingReason?.trim() ?? '';
+      data.closingReason?.trim() ??
+      '';
 
     if (!closingReason) {
       throw new Error(
@@ -360,13 +626,21 @@ export async function changeCaseStatus(
       serverTimestamp();
 
     updateData.closedBy =
-      data.updatedBy;
+      normalizedUpdatedBy;
 
     updateData.closingReason =
       closingReason;
+
+    historyAction =
+      'CASE_CLOSED';
+
+    historyDescription =
+      `Dossier clôturé. Motif : ${closingReason}`;
   }
 
-  if (data.status === 'cancelled') {
+  if (
+    data.status === 'cancelled'
+  ) {
     const cancellationReason =
       data.cancellationReason?.trim() ??
       '';
@@ -381,14 +655,37 @@ export async function changeCaseStatus(
       serverTimestamp();
 
     updateData.cancelledBy =
-      data.updatedBy;
+      normalizedUpdatedBy;
 
     updateData.cancellationReason =
       cancellationReason;
+
+    historyAction =
+      'CASE_CANCELLED';
+
+    historyDescription =
+      `Dossier annulé. Motif : ${cancellationReason}`;
   }
 
-  await updateDoc(
-    doc(db, COLLECTION_NAME, caseId),
+  const historyReference =
+    createHistoryReference();
+
+  const batch = writeBatch(db);
+
+  batch.update(
+    caseReference,
     updateData
   );
+
+  batch.set(
+    historyReference,
+    buildHistoryData(
+      normalizedCaseId,
+      historyAction,
+      historyDescription,
+      normalizedUpdatedBy
+    )
+  );
+
+  await batch.commit();
 }

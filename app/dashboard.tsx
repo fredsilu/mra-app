@@ -1,4 +1,4 @@
-//app/dashboard.tsx
+// app/dashboard.tsx
 
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -119,8 +119,8 @@ export default function DashboardScreen() {
         />
 
         <AppButton
-          title="Demandes"
-          onPress={() => router.push('/requests')}
+          title="Dossiers de relation d’aide"
+          onPress={() => router.push('/cases')}
         />
 
         {canManageUsers(profile) ? (
