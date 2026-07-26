@@ -1,6 +1,6 @@
 //src/components/common/SessionLoader.tsx
 import { ActivityIndicator, Text, View } from 'react-native';
-import { COLORS } from '../../constants/theme';
+import { COLORS } from '@/constants/theme';
 
 export function SessionLoader() {
   return (

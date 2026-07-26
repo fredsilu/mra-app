@@ -1,8 +1,18 @@
 //app/index.tsx
 
-import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import { APP_FULL_NAME, APP_NAME, COLORS } from '../src/constants/theme';
+import {
+  Image,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+import {
+  APP_FULL_NAME,
+  APP_NAME,
+  COLORS,
+} from '@/constants/theme';
 
 export default function WelcomeScreen() {
   return (
@@ -16,12 +26,17 @@ export default function WelcomeScreen() {
       }}
     >
       <Image
-        source={require('../src/assets/logo-icc.png')}
-        style={{ width: 130, height: 130, resizeMode: 'contain', marginBottom: 20 }}
+        source={require('@/assets/logo-icc.png')}
+        style={{
+          width: 130,
+          height: 130,
+          resizeMode: 'contain',
+          marginBottom: 20,
+        }}
       />
 
       <Image
-        source={require('../src/assets/logo-mra.jpg')}
+        source={require('@/assets/logo-mra.jpg')}
         style={{
           width: 150,
           height: 150,
@@ -31,7 +46,13 @@ export default function WelcomeScreen() {
         }}
       />
 
-      <Text style={{ color: COLORS.white, fontSize: 30, fontWeight: '800' }}>
+      <Text
+        style={{
+          color: COLORS.white,
+          fontSize: 30,
+          fontWeight: '800',
+        }}
+      >
         {APP_NAME}
       </Text>
 
@@ -56,8 +77,14 @@ export default function WelcomeScreen() {
           borderRadius: 14,
         }}
       >
-        <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: 16 }}>
-          Accéder à l'application
+        <Text
+          style={{
+            color: COLORS.primary,
+            fontWeight: '700',
+            fontSize: 16,
+          }}
+        >
+          Accéder à l&apos;application
         </Text>
       </TouchableOpacity>
     </View>

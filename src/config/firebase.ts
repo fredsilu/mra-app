@@ -1,53 +1,84 @@
 // src/config/firebase.ts
 
 import {
-  getApp,
+  FirebaseApp,
   getApps,
   initializeApp,
 } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import {
+  Auth,
+  getAuth,
+} from 'firebase/auth';
+import {
+  Firestore,
+  getFirestore,
+} from 'firebase/firestore';
+import {
+  FirebaseStorage,
+  getStorage,
+} from 'firebase/storage';
 
-const firebaseConfig = {
-  apiKey:
-    process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+const getRequiredEnvironmentVariable = (
+  name: string,
+  value: string | undefined
+): string => {
+  const sanitizedValue = value?.trim();
 
-  authDomain:
-    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  if (!sanitizedValue) {
+    throw new Error(
+      `Configuration Firebase incomplète : la variable ${name} est absente ou vide.`
+    );
+  }
 
-  projectId:
-    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-
-  storageBucket:
-    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-
-  messagingSenderId:
-    process.env
-      .EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-
-  appId:
-    process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  return sanitizedValue;
 };
 
-const missingFirebaseVariables =
-  Object.entries(firebaseConfig)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
+const firebaseConfig = {
+  apiKey: getRequiredEnvironmentVariable(
+    'EXPO_PUBLIC_FIREBASE_API_KEY',
+    process.env.EXPO_PUBLIC_FIREBASE_API_KEY
+  ),
 
-if (missingFirebaseVariables.length > 0) {
+  authDomain: getRequiredEnvironmentVariable(
+    'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
+    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
+  ),
+
+  projectId: getRequiredEnvironmentVariable(
+    'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
+    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID
+  ),
+
+  storageBucket: getRequiredEnvironmentVariable(
+    'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
+    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
+  ),
+
+  messagingSenderId: getRequiredEnvironmentVariable(
+    'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+  ),
+
+  appId: getRequiredEnvironmentVariable(
+    'EXPO_PUBLIC_FIREBASE_APP_ID',
+    process.env.EXPO_PUBLIC_FIREBASE_APP_ID
+  ),
+};
+
+/**
+ * Une clé API Firebase Web commence normalement par "AIza".
+ * Ce contrôle permet d'identifier rapidement une valeur incorrecte.
+ */
+if (!firebaseConfig.apiKey.startsWith('AIza')) {
   throw new Error(
-    `Configuration Firebase incomplète. Variables manquantes : ${missingFirebaseVariables.join(
-      ', '
-    )}`
+    'La variable EXPO_PUBLIC_FIREBASE_API_KEY ne contient pas une clé API Web Firebase valide. Recopie la valeur "apiKey" depuis Firebase Console > Paramètres du projet > Général > Vos applications.'
   );
 }
 
 /**
  * Application Firebase principale.
- * Elle conserve la session de l’utilisateur connecté.
  */
-export const app =
+export const app: FirebaseApp =
   getApps().find(
     (firebaseApp) =>
       firebaseApp.name === '[DEFAULT]'
@@ -56,26 +87,32 @@ export const app =
 
 /**
  * Application Firebase secondaire.
- * Elle sert uniquement à créer de nouveaux comptes
- * sans déconnecter le responsable connecté.
+ *
+ * Elle permet au responsable connecté de créer
+ * un nouvel utilisateur sans être lui-même déconnecté.
  */
-const userCreationAppName = 'user-creation';
+const USER_CREATION_APP_NAME =
+  'user-creation';
 
-export const userCreationApp =
+export const userCreationApp: FirebaseApp =
   getApps().find(
     (firebaseApp) =>
-      firebaseApp.name === userCreationAppName
+      firebaseApp.name ===
+      USER_CREATION_APP_NAME
   ) ??
   initializeApp(
     firebaseConfig,
-    userCreationAppName
+    USER_CREATION_APP_NAME
   );
 
-export const auth = getAuth(app);
+export const auth: Auth =
+  getAuth(app);
 
-export const userCreationAuth =
+export const userCreationAuth: Auth =
   getAuth(userCreationApp);
 
-export const db = getFirestore(app);
+export const db: Firestore =
+  getFirestore(app);
 
-export const storage = getStorage(app);
+export const storage: FirebaseStorage =
+  getStorage(app);

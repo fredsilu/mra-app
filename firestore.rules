@@ -18,12 +18,28 @@ service cloud.firestore {
         && currentUserProfile().data.isActive == true;
     }
 
-    function canManageUsers() {
+    function isResponsable() {
       return isActiveUser()
-        && (
-          currentUserProfile().data.role == 'responsable'
-          || currentUserProfile().data.role == 'adjoint'
-        );
+        && currentUserProfile().data.role == 'responsable';
+    }
+
+    function isAdjoint() {
+      return isActiveUser()
+        && currentUserProfile().data.role == 'adjoint';
+    }
+
+    function canManageUsers() {
+      return isResponsable() || isAdjoint();
+    }
+
+    function validUserRole(role) {
+      return role in [
+        'responsable',
+        'adjoint',
+        'secretaire',
+        'conseiller',
+        'logistique'
+      ];
     }
 
     match /users/{userId} {
@@ -33,37 +49,81 @@ service cloud.firestore {
           || canManageUsers()
         );
 
-      allow create: if canManageUsers();
-      allow update: if canManageUsers();
+      allow create: if canManageUsers()
+        && request.resource.data.uid == userId
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.isActive is bool
+        && validUserRole(request.resource.data.role)
+        && (
+          isResponsable()
+          || request.resource.data.role != 'responsable'
+        );
+
+      allow update: if canManageUsers()
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && validUserRole(request.resource.data.role)
+        && (
+          isResponsable()
+          || (
+            resource.data.role != 'responsable'
+            && request.resource.data.role != 'responsable'
+          )
+        )
+        && (
+          request.auth.uid != userId
+          || (
+            request.resource.data.role == resource.data.role
+            && request.resource.data.isActive == true
+          )
+        );
+
       allow delete: if false;
     }
 
     match /people/{personId} {
-      allow read: if isActiveUser();
-      allow create: if isActiveUser();
-      allow update: if isActiveUser();
+      allow read, create, update: if isActiveUser();
       allow delete: if false;
     }
 
     match /requests/{requestId} {
-      allow read: if isActiveUser();
-      allow create: if isActiveUser();
-      allow update: if isActiveUser();
+      allow read, create, update: if isActiveUser();
       allow delete: if false;
     }
 
     match /cases/{caseId} {
-      allow read: if isActiveUser();
-      allow create: if isActiveUser();
-      allow update: if isActiveUser();
+      allow read, create, update: if isActiveUser();
       allow delete: if false;
     }
 
     match /case_history/{historyId} {
-      allow read: if isActiveUser();
-      allow create: if isActiveUser();
-      allow update: if false;
-      allow delete: if false;
+      allow read, create: if isActiveUser();
+      allow update, delete: if false;
     }
+
+    match /counters/{counterId} {
+  allow read: if isActiveUser();
+
+  allow create: if isActiveUser()
+    && request.resource.data.value is int
+    && request.resource.data.value == 1;
+
+  allow update: if isActiveUser()
+    && request.resource.data.value is int
+    && resource.data.value is int
+    && request.resource.data.value == resource.data.value + 1
+    && request.resource.data
+      .diff(resource.data)
+      .affectedKeys()
+      .hasOnly(['value', 'updatedAt']);
+
+  allow delete: if false;
+}
+
+
+
+
+
   }
 }

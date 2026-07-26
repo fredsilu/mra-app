@@ -1,5 +1,5 @@
 //src/permissions/index.ts
-import { UserProfile } from '../types/user.types';
+import { UserProfile } from '@/features/users/user.types';
 
 export function isResponsable(profile: UserProfile | null) {
     return profile?.role === 'responsable';

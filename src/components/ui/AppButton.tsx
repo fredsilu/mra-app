@@ -1,13 +1,18 @@
 //src/components/ui/AppButton.tsx
 import { Text, TouchableOpacity } from 'react-native';
-import { COLORS } from '../../constants/theme';
+import { COLORS } from '@/constants/theme';
 
 type AppButtonProps = {
   title: string;
   onPress: () => void;
+  disabled?: boolean;
 };
 
-export function AppButton({ title, onPress }: AppButtonProps) {
+export function AppButton({
+  title,
+  onPress,
+  disabled = false,
+}: AppButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress}

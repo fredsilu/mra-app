@@ -9,13 +9,13 @@ import {
     useMemo,
     useState,
 } from 'react';
-import { auth } from '../config/firebase';
+import { auth } from '@/config/firebase';
 import {
     loginWithEmail as loginWithEmailService,
     logout as logoutService,
-} from '../services/auth.service';
-import { getUserProfile } from '../services/user.service';
-import { UserProfile } from '../types/user.types';
+} from '@/features/auth/auth.service';
+import { getUserProfile } from '@/features/users/user.service';
+import { UserProfile } from '@/features/users/user.types';
 
 type AuthContextValue = {
     user: User | null;

@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 
-import { COLORS } from '../../constants/theme';
+import { COLORS } from '@/constants/theme';
 
 export type AppSelectOption<T extends string> = {
   label: string;

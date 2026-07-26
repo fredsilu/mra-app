@@ -1,24 +1,28 @@
+//src/navigation/roleRoutes.ts
+
+
 import { Href } from 'expo-router';
-import { UserProfile } from '../types/user.types';
+
+import { UserProfile } from '@/features/users/user.types';
 
 export function getHomeRoute(
-    profile: UserProfile | null
+  profile: UserProfile | null
 ): Href {
-    switch (profile?.role) {
-        case 'responsable':
-        case 'adjoint':
-            return '/dashboard';
+  switch (profile?.role) {
+    case 'responsable':
+    case 'adjoint':
+      return '/dashboard';
 
-        case 'secretaire':
-            return '/agenda';
+    case 'secretaire':
+      return '/agenda';
 
-        case 'conseiller':
-            return '/conseiller';
+    case 'conseiller':
+      return '/counselors';
 
-        case 'logistique':
-            return '/logistique';
+    case 'logistique':
+      return '/logistics';
 
-        default:
-            return '/dashboard';
-    }
+    default:
+      return '/dashboard';
+  }
 }

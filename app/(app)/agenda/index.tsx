@@ -1,33 +1,20 @@
-//app/access-denied.tsx
-
+//app/agenda.tsx
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  Text,
-  View,
-} from 'react-native';
-
+import { Alert, Text, View } from 'react-native';
 import { AppButton } from '@/components/ui/AppButton';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function AccessDeniedScreen() {
+export default function AgendaScreen() {
   const { profile, logout } = useAuth();
-
   const [isLoggingOut, setIsLoggingOut] =
     useState(false);
 
   async function handleLogout() {
-    if (isLoggingOut) {
-      return;
-    }
-
     try {
       setIsLoggingOut(true);
-
       await logout();
-
       router.replace('/login');
     } catch (error) {
       console.error(
@@ -37,16 +24,12 @@ export default function AccessDeniedScreen() {
 
       Alert.alert(
         'Déconnexion impossible',
-        'Une erreur est survenue pendant la déconnexion.'
+        'Une erreur est survenue.'
       );
     } finally {
       setIsLoggingOut(false);
     }
   }
-
-  const message = profile
-    ? 'Votre compte MRA est actuellement désactivé.'
-    : 'Votre compte Firebase existe, mais aucun profil MRA ne lui est associé.';
 
   return (
     <View
@@ -66,28 +49,27 @@ export default function AccessDeniedScreen() {
           textAlign: 'center',
         }}
       >
-        Accès non autorisé
+        Agenda MRA
       </Text>
 
       <Text
         style={{
-          marginTop: 16,
+          marginTop: 12,
           color: COLORS.muted,
           textAlign: 'center',
-          maxWidth: 480,
         }}
       >
-        {message}
+        Espace Secrétariat
       </Text>
 
       <Text
         style={{
-          marginTop: 8,
-          color: COLORS.muted,
+          marginTop: 20,
+          color: COLORS.text,
           textAlign: 'center',
         }}
       >
-        Veuillez contacter le Responsable ou le Responsable adjoint du MRA.
+        {profile?.displayName}
       </Text>
 
       <View
@@ -101,7 +83,7 @@ export default function AccessDeniedScreen() {
           title={
             isLoggingOut
               ? 'Déconnexion...'
-              : 'Retour à la connexion'
+              : 'Se déconnecter'
           }
           onPress={handleLogout}
         />

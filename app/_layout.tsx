@@ -1,15 +1,22 @@
 //app/_layout.tsx
-import { router, Stack, useSegments } from 'expo-router';
+// app/_layout.tsx
+
+import {
+  router,
+  Stack,
+  usePathname,
+} from 'expo-router';
 import { useEffect } from 'react';
-import { SessionLoader } from '../src/components/common/SessionLoader';
+
+import { SessionLoader } from '@/components/common/SessionLoader';
 import {
   AuthProvider,
   useAuth,
-} from '../src/contexts/AuthContext';
-import { getHomeRoute } from '../src/navigation/roleRoutes';
+} from '@/contexts/AuthContext';
+import { getHomeRoute } from '@/navigation/roleRoutes';
 
 function RootNavigator() {
-  const segments = useSegments();
+  const pathname = usePathname();
 
   const {
     isAuthenticated,
@@ -23,18 +30,24 @@ function RootNavigator() {
       return;
     }
 
-    const currentRoute = segments[0];
-    const isOnLoginScreen = currentRoute === 'login';
-    const isOnAccessDeniedScreen = currentRoute === 'access-denied';
+    const isOnWelcomeScreen = pathname === '/';
+    const isOnLoginScreen = pathname === '/login';
+    const isOnAccessDeniedScreen =
+      pathname === '/access-denied';
 
+    // Utilisateur non connecté
     if (!isAuthenticated) {
-      if (!isOnLoginScreen) {
+      const isPublicRoute =
+        isOnWelcomeScreen || isOnLoginScreen;
+
+      if (!isPublicRoute) {
         router.replace('/login');
       }
 
       return;
     }
 
+    // Utilisateur connecté, mais sans accès MRA
     if (!hasAccess) {
       if (!isOnAccessDeniedScreen) {
         router.replace('/access-denied');
@@ -43,7 +56,12 @@ function RootNavigator() {
       return;
     }
 
-    if (isOnLoginScreen || isOnAccessDeniedScreen) {
+    // Utilisateur connecté et autorisé
+    if (
+      isOnWelcomeScreen ||
+      isOnLoginScreen ||
+      isOnAccessDeniedScreen
+    ) {
       router.replace(getHomeRoute(profile));
     }
   }, [
@@ -51,14 +69,20 @@ function RootNavigator() {
     hasAccess,
     isLoading,
     profile,
-    segments,
+    pathname,
   ]);
 
   if (isLoading) {
     return <SessionLoader />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    />
+  );
 }
 
 export default function RootLayout() {

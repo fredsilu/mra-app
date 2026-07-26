@@ -1,6 +1,6 @@
 //src/components/ui/AppInput.tsx
 import { TextInput, TextInputProps } from 'react-native';
-import { COLORS } from '../../constants/theme';
+import { COLORS } from '@/constants/theme';
 
 export function AppInput(props: TextInputProps) {
   return (
