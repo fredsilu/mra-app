@@ -1,4 +1,4 @@
-//src/types/user.types.ts
+//src/features/users/user.types.ts
 export type UserRole =
   | 'responsable'
   | 'adjoint'

@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+
 import { AppButton } from '@/components/ui/AppButton';
 import { AppSelect } from '@/components/ui/AppSelect';
 import { COLORS } from '@/constants/theme';
@@ -21,10 +22,7 @@ import {
 import {
   assignCounselor,
   cancelRequest,
-  closeRequest,
-  completeRequest,
   getRequest,
-  startRequest,
 } from '@/features/requests/request.service';
 import { getActiveCounselors } from '@/features/users/user.service';
 import {
@@ -47,19 +45,15 @@ function formatDate(
   });
 }
 
-function getStatusColor(status: HelpRequest['status']) {
+function getStatusColor(
+  status: HelpRequest['status']
+) {
   switch (status) {
     case 'new':
       return '#1976D2';
 
     case 'assigned':
       return '#7B1FA2';
-
-    case 'in_progress':
-      return '#F57C00';
-
-    case 'closed':
-      return '#2E7D32';
 
     case 'cancelled':
       return '#D32F2F';
@@ -184,6 +178,7 @@ export default function RequestDetailsScreen() {
     setSelectedCounselorId,
   ] = useState('');
 
+
   const [isLoading, setIsLoading] =
     useState(true);
 
@@ -196,32 +191,18 @@ export default function RequestDetailsScreen() {
   const isAssignedCounselor =
     Boolean(
       profile?.uid &&
-        request?.assignedCounselorId === profile.uid
+      request?.assignedCounselorId === profile.uid
     );
 
-  const canStartRequest =
+  const canManageFirstAppointment =
     request?.status === 'assigned' &&
     (
       hasAssignmentPermission ||
       isAssignedCounselor
     );
 
-  const canCompleteRequest =
-    request?.status === 'in_progress' &&
-    (
-      hasAssignmentPermission ||
-      isAssignedCounselor
-    ) &&
-    !request.completedAt;
-
-  const canCloseRequest =
-    request?.status === 'in_progress' &&
-    Boolean(request.completedAt) &&
-    hasAssignmentPermission;
-
   const canCancelRequest =
     hasAssignmentPermission &&
-    request?.status !== 'closed' &&
     request?.status !== 'cancelled';
 
   const counselorOptions = useMemo(
@@ -265,6 +246,8 @@ export default function RequestDetailsScreen() {
         requestResult.assignedCounselorId ?? ''
       );
 
+
+
       if (hasAssignmentPermission) {
         const counselorList =
           await getActiveCounselors();
@@ -290,6 +273,8 @@ export default function RequestDetailsScreen() {
     loadData();
   }, [loadData]);
 
+
+
   async function handleAssignCounselor() {
     if (
       !id ||
@@ -311,15 +296,15 @@ export default function RequestDetailsScreen() {
         item.uid === selectedCounselorId
     );
     if (
-  request?.assignedCounselorId === counselor?.uid
-) {
-  Alert.alert(
-    'Information',
-    'Ce conseiller est déjà affecté à cette demande.'
-  );
+      request?.assignedCounselorId === counselor?.uid
+    ) {
+      Alert.alert(
+        'Information',
+        'Ce conseiller est déjà affecté à cette demande.'
+      );
 
-  return;
-}
+      return;
+    }
 
     if (!counselor) {
       Alert.alert(
@@ -360,137 +345,6 @@ export default function RequestDetailsScreen() {
     }
   }
 
-  async function handleStartRequest() {
-    if (
-      !id ||
-      !profile ||
-      isSaving
-    ) {
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-
-      await startRequest(
-        id,
-        profile.uid,
-        profile.displayName
-      );
-
-      Alert.alert(
-        'Succès',
-        'La prise en charge a commencé.'
-      );
-
-      await loadData();
-    } catch (error) {
-      console.error(
-        'Erreur lors du démarrage :',
-        error
-      );
-
-      Alert.alert(
-        'Erreur',
-        'Impossible de démarrer la prise en charge.'
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleCompleteRequest() {
-    if (
-      !id ||
-      !profile ||
-      isSaving
-    ) {
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-
-      await completeRequest(
-        id,
-        profile.uid,
-        profile.displayName
-      );
-
-      Alert.alert(
-        'Succès',
-        'La prise en charge a été marquée comme terminée.'
-      );
-
-      await loadData();
-    } catch (error) {
-      console.error(
-        'Erreur lors de la finalisation :',
-        error
-      );
-
-      Alert.alert(
-        'Erreur',
-        'Impossible de terminer la prise en charge.'
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function handleCloseRequest() {
-    if (
-      !id ||
-      !profile ||
-      isSaving
-    ) {
-      return;
-    }
-
-    Alert.alert(
-      'Clôturer la demande',
-      'Voulez-vous réellement clôturer cette demande ?',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel',
-        },
-        {
-          text: 'Clôturer',
-          onPress: async () => {
-            try {
-              setIsSaving(true);
-
-              await closeRequest(
-                id,
-                profile.uid,
-                profile.displayName
-              );
-
-              Alert.alert(
-                'Succès',
-                'La demande a été clôturée.'
-              );
-
-              await loadData();
-            } catch (error) {
-              console.error(
-                'Erreur lors de la clôture :',
-                error
-              );
-
-              Alert.alert(
-                'Erreur',
-                'Impossible de clôturer la demande.'
-              );
-            } finally {
-              setIsSaving(false);
-            }
-          },
-        },
-      ]
-    );
-  }
 
   function handleCancelRequest() {
     if (
@@ -676,7 +530,7 @@ export default function RequestDetailsScreen() {
             >
               {
                 REQUEST_STATUS_LABELS[
-                  request.status
+                request.status
                 ]
               }
             </Text>
@@ -711,7 +565,7 @@ export default function RequestDetailsScreen() {
             >
               {
                 REQUEST_PRIORITY_LABELS[
-                  request.priority
+                request.priority
                 ]
               }
             </Text>
@@ -746,6 +600,17 @@ export default function RequestDetailsScreen() {
               'Aucun conseiller affecté'
             }
           />
+          {request.initialAppointmentId ? (
+            <InfoRow
+              label="Premier rendez-vous"
+              value="Planifié"
+            />
+          ) : (
+            <InfoRow
+              label="Premier rendez-vous"
+              value="Non planifié"
+            />
+          )}
         </Section>
 
         <Section title="Motif">
@@ -775,8 +640,8 @@ export default function RequestDetailsScreen() {
         </Section>
 
         {hasAssignmentPermission &&
-        request.status !== 'closed' &&
-        request.status !== 'cancelled' ? (
+          (request.status === 'new' ||
+            request.status === 'assigned') ? (
           <Section title="Affectation">
             <AppSelect
               label="Conseiller"
@@ -807,6 +672,36 @@ export default function RequestDetailsScreen() {
           </Section>
         ) : null}
 
+        {canManageFirstAppointment ? (
+          <Section title="Premier rendez-vous">
+            <AppButton
+              title={
+                request.initialAppointmentId
+                  ? "Voir le rendez-vous"
+                  : "Planifier le premier rendez-vous"
+              }
+              onPress={() => {
+                if (request.initialAppointmentId) {
+                  router.push({
+                    pathname: '/appointments/[id]',
+                    params: {
+                      id: request.initialAppointmentId,
+                    },
+                  });
+                  return;
+                }
+
+                router.push({
+                  pathname: '/appointments/form',
+                  params: {
+                    requestId: request.id,
+                  },
+                });
+              }}
+            />
+          </Section>
+        ) : null}
+
         <Section title="Historique">
           <InfoRow
             label="Création"
@@ -817,58 +712,21 @@ export default function RequestDetailsScreen() {
 
           {request.assignedAt ? (
             <InfoRow
-              label={`Affectation à ${
-                request.assignedCounselorName ??
+              label={`Affectation à ${request.assignedCounselorName ??
                 'un conseiller'
-              }`}
+                }`}
               value={formatDate(
                 request.assignedAt
               )}
             />
           ) : null}
 
-          {request.startedAt ? (
-            <InfoRow
-              label={`Prise en charge démarrée par ${
-                request.startedByName ??
-                'un utilisateur'
-              }`}
-              value={formatDate(
-                request.startedAt
-              )}
-            />
-          ) : null}
-
-          {request.completedAt ? (
-            <InfoRow
-              label={`Prise en charge terminée par ${
-                request.completedByName ??
-                'un utilisateur'
-              }`}
-              value={formatDate(
-                request.completedAt
-              )}
-            />
-          ) : null}
-
-          {request.closedAt ? (
-            <InfoRow
-              label={`Demande clôturée par ${
-                request.closedByName ??
-                'un utilisateur'
-              }`}
-              value={formatDate(
-                request.closedAt
-              )}
-            />
-          ) : null}
 
           {request.cancelledAt ? (
             <InfoRow
-              label={`Demande annulée par ${
-                request.cancelledByName ??
+              label={`Demande annulée par ${request.cancelledByName ??
                 'un utilisateur'
-              }`}
+                }`}
               value={formatDate(
                 request.cancelledAt
               )}
@@ -877,38 +735,7 @@ export default function RequestDetailsScreen() {
         </Section>
 
         <View style={{ gap: 12 }}>
-          {canStartRequest ? (
-            <AppButton
-              title={
-                isSaving
-                  ? 'Enregistrement...'
-                  : 'Démarrer la prise en charge'
-              }
-              onPress={handleStartRequest}
-            />
-          ) : null}
 
-          {canCompleteRequest ? (
-            <AppButton
-              title={
-                isSaving
-                  ? 'Enregistrement...'
-                  : 'Terminer la prise en charge'
-              }
-              onPress={handleCompleteRequest}
-            />
-          ) : null}
-
-          {canCloseRequest ? (
-            <AppButton
-              title={
-                isSaving
-                  ? 'Enregistrement...'
-                  : 'Clôturer la demande'
-              }
-              onPress={handleCloseRequest}
-            />
-          ) : null}
 
           {canCancelRequest ? (
             <AppButton

@@ -124,7 +124,17 @@ export default function DashboardScreen() {
         />
 
         <AppButton
-          title="Dossiers de relation d’aide"
+          title="Rendez-vous"
+          onPress={() => router.push('/appointments')}
+        />
+
+        <AppButton
+          title="Entretiens"
+          onPress={() => router.push('/interviews')}
+        />
+
+        <AppButton
+          title="Dossiers"
           onPress={() => router.push('/cases')}
         />
 

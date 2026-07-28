@@ -1,5 +1,4 @@
 //src/features/requests/request.service.ts
-
 import {
   Timestamp,
   collection,
@@ -29,8 +28,6 @@ const COLLECTION_NAME = 'requests';
 const REQUEST_STATUSES: RequestStatus[] = [
   'new',
   'assigned',
-  'in_progress',
-  'closed',
   'cancelled',
 ];
 
@@ -52,7 +49,8 @@ function toTimestamp(
 function toOptionalString(
   value: unknown
 ): string | undefined {
-  return typeof value === 'string' && value.trim()
+  return typeof value === 'string' &&
+    value.trim()
     ? value
     : undefined;
 }
@@ -111,6 +109,11 @@ function mapHelpRequest(
         data.assignedCounselorName
       ),
 
+    initialAppointmentId:
+      toOptionalString(
+        data.initialAppointmentId
+      ),
+
     status: isRequestStatus(data.status)
       ? data.status
       : 'new',
@@ -139,7 +142,9 @@ function mapHelpRequest(
         : '',
 
     createdByName:
-      toOptionalString(data.createdByName),
+      toOptionalString(
+        data.createdByName
+      ),
 
     updatedAt:
       toTimestamp(data.updatedAt),
@@ -147,40 +152,13 @@ function mapHelpRequest(
     assignedAt:
       toTimestamp(data.assignedAt),
 
-    startedAt:
-      toTimestamp(data.startedAt),
-
-    startedBy:
-      toOptionalString(data.startedBy),
-
-    startedByName:
-      toOptionalString(data.startedByName),
-
-    completedAt:
-      toTimestamp(data.completedAt),
-
-    completedBy:
-      toOptionalString(data.completedBy),
-
-    completedByName:
-      toOptionalString(
-        data.completedByName
-      ),
-
-    closedAt:
-      toTimestamp(data.closedAt),
-
-    closedBy:
-      toOptionalString(data.closedBy),
-
-    closedByName:
-      toOptionalString(data.closedByName),
-
     cancelledAt:
       toTimestamp(data.cancelledAt),
 
     cancelledBy:
-      toOptionalString(data.cancelledBy),
+      toOptionalString(
+        data.cancelledBy
+      ),
 
     cancelledByName:
       toOptionalString(
@@ -192,51 +170,102 @@ function mapHelpRequest(
 export async function createRequest(
   data: CreateHelpRequestData
 ): Promise<string> {
+  const normalizedPersonId =
+    data.personId.trim();
+
+  const normalizedPersonName =
+    data.personName.trim();
+
+  const normalizedReason =
+    data.reason.trim();
+
+  const normalizedCreatedBy =
+    data.createdBy.trim();
+
+  const normalizedCreatedByName =
+    data.createdByName?.trim() ?? '';
+
+  const normalizedNotes =
+    data.notes?.trim() ?? '';
+
+  if (!normalizedPersonId) {
+    throw new Error(
+      'PERSON_ID_REQUIRED'
+    );
+  }
+
+  if (!normalizedPersonName) {
+    throw new Error(
+      'PERSON_NAME_REQUIRED'
+    );
+  }
+
+  if (!normalizedReason) {
+    throw new Error(
+      'REQUEST_REASON_REQUIRED'
+    );
+  }
+
+  if (!normalizedCreatedBy) {
+    throw new Error(
+      'USER_ID_REQUIRED'
+    );
+  }
+
   const nextNumber =
-    await getNextCounterValue('requests');
+    await getNextCounterValue(
+      'requests'
+    );
 
   const requestNumber =
-    `REQ-${String(nextNumber).padStart(6, '0')}`;
+    `MRA-R-${String(nextNumber).padStart(
+      6,
+      '0'
+    )}`;
 
   const requestReference = doc(
-    collection(db, COLLECTION_NAME)
+    collection(
+      db,
+      COLLECTION_NAME
+    )
   );
 
   await setDoc(requestReference, {
     requestNumber,
 
-    personId: data.personId,
-    personName: data.personName,
+    personId:
+      normalizedPersonId,
+
+    personName:
+      normalizedPersonName,
 
     assignedCounselorId: null,
     assignedCounselorName: null,
 
+    initialAppointmentId: null,
+
     status: 'new',
     priority: data.priority,
 
-    reason: data.reason.trim(),
-    notes: data.notes?.trim() ?? '',
+    reason:
+      normalizedReason,
 
-    createdBy: data.createdBy,
+    notes:
+      normalizedNotes,
+
+    createdBy:
+      normalizedCreatedBy,
+
     createdByName:
-      data.createdByName?.trim() ?? '',
+      normalizedCreatedByName,
 
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt:
+      serverTimestamp(),
+
+    updatedAt:
+      serverTimestamp(),
 
     assignedAt: null,
-
-    startedAt: null,
-    startedBy: null,
-    startedByName: null,
-
-    completedAt: null,
-    completedBy: null,
-    completedByName: null,
-
-    closedAt: null,
-    closedBy: null,
-    closedByName: null,
 
     cancelledAt: null,
     cancelledBy: null,
@@ -249,8 +278,18 @@ export async function createRequest(
 export async function getRequest(
   id: string
 ): Promise<HelpRequest | null> {
+  const normalizedId = id.trim();
+
+  if (!normalizedId) {
+    return null;
+  }
+
   const snapshot = await getDoc(
-    doc(db, COLLECTION_NAME, id)
+    doc(
+      db,
+      COLLECTION_NAME,
+      normalizedId
+    )
   );
 
   if (!snapshot.exists()) {
@@ -268,16 +307,23 @@ export async function getRequests(): Promise<
 > {
   const snapshot = await getDocs(
     query(
-      collection(db, COLLECTION_NAME),
-      orderBy('createdAt', 'desc')
+      collection(
+        db,
+        COLLECTION_NAME
+      ),
+      orderBy(
+        'createdAt',
+        'desc'
+      )
     )
   );
 
-  return snapshot.docs.map((snapshot) =>
-    mapHelpRequest(
-      snapshot.id,
-      snapshot.data()
-    )
+  return snapshot.docs.map(
+    (requestDocument) =>
+      mapHelpRequest(
+        requestDocument.id,
+        requestDocument.data()
+      )
   );
 }
 
@@ -285,11 +331,24 @@ export async function updateRequest(
   id: string,
   data: UpdateHelpRequestData
 ): Promise<void> {
+  const normalizedId = id.trim();
+
+  if (!normalizedId) {
+    throw new Error(
+      'REQUEST_ID_REQUIRED'
+    );
+  }
+
   await updateDoc(
-    doc(db, COLLECTION_NAME, id),
+    doc(
+      db,
+      COLLECTION_NAME,
+      normalizedId
+    ),
     {
       ...data,
-      updatedAt: serverTimestamp(),
+      updatedAt:
+        serverTimestamp(),
     }
   );
 }
@@ -299,72 +358,90 @@ export async function assignCounselor(
   counselorId: string,
   counselorName: string
 ): Promise<void> {
+  const normalizedRequestId =
+    requestId.trim();
+
+  const normalizedCounselorId =
+    counselorId.trim();
+
+  const normalizedCounselorName =
+    counselorName.trim();
+
+  if (!normalizedRequestId) {
+    throw new Error(
+      'REQUEST_ID_REQUIRED'
+    );
+  }
+
+  if (
+    !normalizedCounselorId ||
+    !normalizedCounselorName
+  ) {
+    throw new Error(
+      'COUNSELOR_REQUIRED'
+    );
+  }
+
+  const requestReference = doc(
+    db,
+    COLLECTION_NAME,
+    normalizedRequestId
+  );
+
+  const requestSnapshot =
+    await getDoc(
+      requestReference
+    );
+
+  if (!requestSnapshot.exists()) {
+    throw new Error(
+      'REQUEST_NOT_FOUND'
+    );
+  }
+
+  const currentRequest =
+    mapHelpRequest(
+      requestSnapshot.id,
+      requestSnapshot.data()
+    );
+
+  if (
+    currentRequest.status !==
+      'new' &&
+    currentRequest.status !==
+      'assigned'
+  ) {
+    throw new Error(
+      'REQUEST_ASSIGNMENT_NOT_ALLOWED'
+    );
+  }
+
+  if (
+    currentRequest
+      .assignedCounselorId ===
+    normalizedCounselorId
+  ) {
+    throw new Error(
+      'COUNSELOR_ALREADY_ASSIGNED'
+    );
+  }
+
   await updateDoc(
-    doc(db, COLLECTION_NAME, requestId),
+    requestReference,
     {
-      assignedCounselorId: counselorId,
+      assignedCounselorId:
+        normalizedCounselorId,
+
       assignedCounselorName:
-        counselorName.trim(),
+        normalizedCounselorName,
 
       status: 'assigned',
 
-      assignedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }
-  );
-}
+      assignedAt:
+        serverTimestamp(),
 
-export async function startRequest(
-  requestId: string,
-  userId: string,
-  userName: string
-): Promise<void> {
-  await updateDoc(
-    doc(db, COLLECTION_NAME, requestId),
-    {
-      status: 'in_progress',
-
-      startedAt: serverTimestamp(),
-      startedBy: userId,
-      startedByName: userName.trim(),
-
-      updatedAt: serverTimestamp(),
-    }
-  );
-}
-
-export async function completeRequest(
-  requestId: string,
-  userId: string,
-  userName: string
-): Promise<void> {
-  await updateDoc(
-    doc(db, COLLECTION_NAME, requestId),
-    {
-      completedAt: serverTimestamp(),
-      completedBy: userId,
-      completedByName: userName.trim(),
-
-      updatedAt: serverTimestamp(),
-    }
-  );
-}
-
-export async function closeRequest(
-  requestId: string,
-  userId: string,
-  userName: string
-): Promise<void> {
-  await updateDoc(
-    doc(db, COLLECTION_NAME, requestId),
-    {
-      status: 'closed',
-
-      closedAt: serverTimestamp(),
-      closedBy: userId,
-      closedByName: userName.trim(),
-
-      updatedAt: serverTimestamp(),
+      updatedAt:
+        serverTimestamp(),
     }
   );
 }
@@ -374,17 +451,75 @@ export async function cancelRequest(
   userId: string,
   userName: string
 ): Promise<void> {
+  const normalizedRequestId =
+    requestId.trim();
+
+  const normalizedUserId =
+    userId.trim();
+
+  const normalizedUserName =
+    userName.trim();
+
+  if (!normalizedRequestId) {
+    throw new Error(
+      'REQUEST_ID_REQUIRED'
+    );
+  }
+
+  if (!normalizedUserId) {
+    throw new Error(
+      'USER_ID_REQUIRED'
+    );
+  }
+
+  const requestReference = doc(
+    db,
+    COLLECTION_NAME,
+    normalizedRequestId
+  );
+
+  const requestSnapshot =
+    await getDoc(
+      requestReference
+    );
+
+  if (!requestSnapshot.exists()) {
+    throw new Error(
+      'REQUEST_NOT_FOUND'
+    );
+  }
+
+  const currentRequest =
+    mapHelpRequest(
+      requestSnapshot.id,
+      requestSnapshot.data()
+    );
+
+  if (
+    currentRequest.status ===
+    'cancelled'
+  ) {
+    throw new Error(
+      'REQUEST_ALREADY_CANCELLED'
+    );
+  }
+
   await updateDoc(
-    doc(db, COLLECTION_NAME, requestId),
+    requestReference,
     {
       status: 'cancelled',
 
-      cancelledAt: serverTimestamp(),
-      cancelledBy: userId,
-      cancelledByName:
-        userName.trim(),
+      cancelledAt:
+        serverTimestamp(),
 
-      updatedAt: serverTimestamp(),
+      cancelledBy:
+        normalizedUserId,
+
+      cancelledByName:
+        normalizedUserName,
+
+      updatedAt:
+        serverTimestamp(),
     }
   );
 }

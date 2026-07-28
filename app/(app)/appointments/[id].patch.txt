@@ -1,0 +1,33 @@
+Dans app/(app)/appointments/[id].tsx :
+
+1. Importer :
+import { getInterviewByAppointmentId } from '@/features/interviews/interview.service';
+
+2. Ajouter :
+const [interviewId, setInterviewId] = useState<string | null>(null);
+
+3. Après setAppointment(result) dans loadAppointment() :
+const linkedInterview = await getInterviewByAppointmentId(result.id);
+setInterviewId(linkedInterview?.id ?? null);
+
+4. Ajouter dans la zone des boutons :
+{appointment.status === 'completed' ? (
+  <AppButton
+    title={interviewId ? 'Voir l’entretien' : 'Démarrer l’entretien'}
+    disabled={isSaving}
+    onPress={() => {
+      if (interviewId) {
+        router.push({
+          pathname: '/interviews/[id]',
+          params: { id: interviewId },
+        });
+        return;
+      }
+
+      router.push({
+        pathname: '/interviews/form',
+        params: { appointmentId: appointment.id },
+      });
+    }}
+  />
+) : null}

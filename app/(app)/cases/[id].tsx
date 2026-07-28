@@ -1,3 +1,4 @@
+//app/(app)/cases/[id].tsx
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {

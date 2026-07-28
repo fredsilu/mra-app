@@ -51,19 +51,15 @@ export default function RequestsScreen() {
     }
   }
 
-  function statusColor(status: string) {
+  function statusColor(
+    status: HelpRequest['status']
+  ) {
     switch (status) {
       case 'new':
         return '#1976D2';
 
       case 'assigned':
         return '#7B1FA2';
-
-      case 'in_progress':
-        return '#F57C00';
-
-      case 'closed':
-        return '#2E7D32';
 
       case 'cancelled':
         return '#D32F2F';
@@ -73,7 +69,9 @@ export default function RequestsScreen() {
     }
   }
 
-  function priorityColor(priority: string) {
+  function priorityColor(
+    priority: HelpRequest['priority']
+  ) {
     switch (priority) {
       case 'low':
         return '#43A047';

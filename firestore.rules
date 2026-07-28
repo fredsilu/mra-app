@@ -92,6 +92,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /appointments/{appointmentId} {
+      allow read, create, update: if isActiveUser();
+      allow delete: if false;
+    }
+
+    match /interviews/{interviewId} {
+      allow read, create, update: if isActiveUser();
+      allow delete: if false;
+    }
+
     match /cases/{caseId} {
       allow read, create, update: if isActiveUser();
       allow delete: if false;
@@ -103,27 +113,25 @@ service cloud.firestore {
     }
 
     match /counters/{counterId} {
-  allow read: if isActiveUser();
+      allow read: if isActiveUser();
 
-  allow create: if isActiveUser()
-    && request.resource.data.value is int
-    && request.resource.data.value == 1;
+      allow create: if isActiveUser()
+        && request.resource.data.value is int
+        && request.resource.data.value == 1;
 
-  allow update: if isActiveUser()
-    && request.resource.data.value is int
-    && resource.data.value is int
-    && request.resource.data.value == resource.data.value + 1
-    && request.resource.data
-      .diff(resource.data)
-      .affectedKeys()
-      .hasOnly(['value', 'updatedAt']);
+      allow update: if isActiveUser()
+        && request.resource.data.value is int
+        && resource.data.value is int
+        && request.resource.data.value == resource.data.value + 1
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'value',
+            'updatedAt'
+          ]);
 
-  allow delete: if false;
-}
-
-
-
-
-
+      allow delete: if false;
+    }
   }
 }

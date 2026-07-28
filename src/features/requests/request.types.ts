@@ -1,172 +1,137 @@
 //src/features/requests/request.types.ts
-
 import { Timestamp } from 'firebase/firestore';
 
 export type RequestStatus =
-    | 'new'
-    | 'assigned'
-    | 'in_progress'
-    | 'closed'
-    | 'cancelled';
+  | 'new'
+  | 'assigned'
+  | 'cancelled';
 
 export type RequestPriority =
-    | 'low'
-    | 'normal'
-    | 'high'
-    | 'urgent';
+  | 'low'
+  | 'normal'
+  | 'high'
+  | 'urgent';
 
 export interface HelpRequest {
-    id: string;
-     requestNumber: string;
+  id: string;
+  requestNumber: string;
 
-    personId: string;
-    personName: string;
+  personId: string;
+  personName: string;
 
-    assignedCounselorId?: string;
-    assignedCounselorName?: string;
+  assignedCounselorId?: string;
+  assignedCounselorName?: string;
 
-    status: RequestStatus;
-    priority: RequestPriority;
+  initialAppointmentId?: string;
 
-    reason: string;
-    notes?: string;
+  status: RequestStatus;
+  priority: RequestPriority;
 
-    createdAt: Timestamp;
-    createdBy: string;
-    createdByName?: string;
+  reason: string;
+  notes?: string;
 
-    updatedAt?: Timestamp;
+  createdAt: Timestamp;
+  createdBy: string;
+  createdByName?: string;
 
-    assignedAt?: Timestamp;
-    closedAt?: Timestamp;
-    cancelledAt?: Timestamp;
+  updatedAt?: Timestamp;
+  assignedAt?: Timestamp;
 
-    // NOUVEAUX CHAMPS
-    startedAt?: Timestamp;
-    startedBy?: string;
-    startedByName?: string;
-
-    completedAt?: Timestamp;
-    completedBy?: string;
-    completedByName?: string;
-
-    closedBy?: string;
-    closedByName?: string;
-
-    cancelledBy?: string;
-    cancelledByName?: string;
+  cancelledAt?: Timestamp;
+  cancelledBy?: string;
+  cancelledByName?: string;
 }
 
 export type CreateHelpRequestData = {
-    personId: string;
-    personName: string;
+  personId: string;
+  personName: string;
 
-    priority: RequestPriority;
+  priority: RequestPriority;
 
-    reason: string;
-    notes?: string;
+  reason: string;
+  notes?: string;
 
-    createdBy: string;
-    createdByName?: string;
+  createdBy: string;
+  createdByName?: string;
 };
 
 export type UpdateHelpRequestData = {
-    personId?: string;
-    personName?: string;
+  personId?: string;
+  personName?: string;
 
-    assignedCounselorId?: string | null;
-    assignedCounselorName?: string | null;
+  assignedCounselorId?: string | null;
+  assignedCounselorName?: string | null;
 
-    startedAt?: Timestamp | null;
-    startedBy?: string | null;
-    startedByName?: string | null;
+  initialAppointmentId?: string | null;
 
-    completedAt?: Timestamp | null;
-    completedBy?: string | null;
-    completedByName?: string | null;
+  status?: RequestStatus;
+  priority?: RequestPriority;
 
-    closedBy?: string | null;
-    closedByName?: string | null;
+  reason?: string;
+  notes?: string;
 
-    cancelledBy?: string | null;
-    cancelledByName?: string | null;
+  assignedAt?: Timestamp | null;
 
-    status?: RequestStatus;
-    priority?: RequestPriority;
-
-    reason?: string;
-    notes?: string;
-
-    assignedAt?: Timestamp | null;
-    closedAt?: Timestamp | null;
-    cancelledAt?: Timestamp | null;
+  cancelledAt?: Timestamp | null;
+  cancelledBy?: string | null;
+  cancelledByName?: string | null;
 };
 
 export const REQUEST_STATUS_LABELS: Record<
-    RequestStatus,
-    string
+  RequestStatus,
+  string
 > = {
-    new: 'Nouvelle',
-    assigned: 'Assignée',
-    in_progress: 'En cours',
-    closed: 'Clôturée',
-    cancelled: 'Annulée',
+  new: 'Nouvelle',
+  assigned: 'Assignée',
+  cancelled: 'Annulée',
 };
 
 export const REQUEST_PRIORITY_LABELS: Record<
-    RequestPriority,
-    string
+  RequestPriority,
+  string
 > = {
-    low: 'Faible',
-    normal: 'Normale',
-    high: 'Élevée',
-    urgent: 'Urgente',
+  low: 'Faible',
+  normal: 'Normale',
+  high: 'Élevée',
+  urgent: 'Urgente',
 };
 
 export const REQUEST_STATUS_OPTIONS: Array<{
-    label: string;
-    value: RequestStatus;
+  label: string;
+  value: RequestStatus;
 }> = [
-        {
-            label: 'Nouvelle',
-            value: 'new',
-        },
-        {
-            label: 'Assignée',
-            value: 'assigned',
-        },
-        {
-            label: 'En cours',
-            value: 'in_progress',
-        },
-        {
-            label: 'Clôturée',
-            value: 'closed',
-        },
-        {
-            label: 'Annulée',
-            value: 'cancelled',
-        },
-    ];
+  {
+    label: 'Nouvelle',
+    value: 'new',
+  },
+  {
+    label: 'Assignée',
+    value: 'assigned',
+  },
+  {
+    label: 'Annulée',
+    value: 'cancelled',
+  },
+];
 
 export const REQUEST_PRIORITY_OPTIONS: Array<{
-    label: string;
-    value: RequestPriority;
+  label: string;
+  value: RequestPriority;
 }> = [
-        {
-            label: 'Faible',
-            value: 'low',
-        },
-        {
-            label: 'Normale',
-            value: 'normal',
-        },
-        {
-            label: 'Élevée',
-            value: 'high',
-        },
-        {
-            label: 'Urgente',
-            value: 'urgent',
-        },
-    ];
+  {
+    label: 'Faible',
+    value: 'low',
+  },
+  {
+    label: 'Normale',
+    value: 'normal',
+  },
+  {
+    label: 'Élevée',
+    value: 'high',
+  },
+  {
+    label: 'Urgente',
+    value: 'urgent',
+  },
+];

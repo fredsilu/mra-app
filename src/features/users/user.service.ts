@@ -1,4 +1,4 @@
-// src/services/user.service.ts
+//src/features/users/user.service.ts
 
 import {
   createUserWithEmailAndPassword,
