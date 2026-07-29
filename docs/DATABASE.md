@@ -1,9 +1,13 @@
+Je ferais les mêmes ajustements que pour le **DATA_MODEL** afin que les trois documents (Architecture, Data Model et Database) soient parfaitement cohérents.
+
+---
+
 # DATABASE.md
 
 # MRA – Architecture de la base de données
 
-Version : 1.0
-Statut : Validé
+**Version :** 1.0
+**Statut :** Validé
 
 ---
 
@@ -36,12 +40,13 @@ La base de données repose sur les services Firebase suivants :
 
 # 3. Collections Firestore
 
-La base de données est composée des collections suivantes.
-
 | Collection      | Description                                    |
 | --------------- | ---------------------------------------------- |
 | people          | Personnes suivies par le MRA                   |
-| requests        | Demandes d'entretien                           |
+| requests        | Demandes de relation d'aide                    |
+| appointments    | Rendez-vous                                    |
+| interviews      | Entretiens                                     |
+| contracts       | Contrats de prise en charge                    |
 | cases           | Dossiers de prise en charge                    |
 | case_activities | Activités réalisées pendant la prise en charge |
 | case_history    | Historique des actions sur un dossier          |
@@ -57,22 +62,64 @@ La base de données est composée des collections suivantes.
 
 Contient les informations permanentes d'une personne.
 
-Une personne :
+Une personne peut avoir :
 
-* peut avoir plusieurs demandes ;
-* peut avoir plusieurs dossiers de prise en charge.
+* plusieurs demandes ;
+* plusieurs rendez-vous ;
+* plusieurs entretiens ;
+* plusieurs dossiers au cours de sa vie.
 
 ---
 
 ## requests
 
-Contient les demandes d'entretien.
+Contient les demandes de relation d'aide.
 
 Chaque demande :
 
 * appartient à une personne ;
-* peut aboutir à un dossier de prise en charge ;
+* peut être affectée à un conseiller ;
+* peut conduire à la création d'un dossier ;
 * peut également être clôturée sans ouverture de dossier.
+
+---
+
+## appointments
+
+Contient les rendez-vous planifiés.
+
+Le rendez-vous est uniquement un **jalon dans le temps**.
+
+Il sert à organiser les rencontres entre une personne et un conseiller.
+
+Il ne contient aucun contenu d'entretien.
+
+---
+
+## interviews
+
+Contient les comptes rendus des entretiens réalisés.
+
+Un entretien :
+
+* appartient à une personne ;
+* peut être associé à une demande ;
+* peut être lié à un rendez-vous ;
+* peut être réalisé avant ou après l'ouverture d'un dossier.
+
+Avant l'ouverture d'un dossier, l'entretien n'est rattaché à aucun dossier.
+
+Après ouverture du dossier, les nouveaux entretiens sont associés au dossier concerné.
+
+---
+
+## contracts
+
+Contient les contrats de prise en charge.
+
+Le contrat formalise l'accord entre la personne et le ministère.
+
+Sa signature permet l'ouverture du dossier.
 
 ---
 
@@ -82,21 +129,26 @@ Contient les dossiers de prise en charge.
 
 Chaque dossier :
 
-* est lié à une demande ;
 * est lié à une personne ;
+* est lié à une demande ;
+* est lié à un contrat ;
 * possède un conseiller principal.
+
+Le dossier représente le début officiel de l'accompagnement.
 
 ---
 
 ## case_activities
 
-Contient toutes les activités réalisées pendant une prise en charge.
+Contient les activités réalisées pendant la prise en charge.
 
 Exemples :
 
-* entretien ;
 * suivi ;
+* note ;
 * recommandation.
+
+Les entretiens disposent de leur propre collection et ne sont donc pas stockés ici.
 
 Toutes les activités sont rattachées à un dossier.
 
@@ -104,17 +156,16 @@ Toutes les activités sont rattachées à un dossier.
 
 ## case_history
 
-Journal des événements du dossier.
+Journal technique des événements du dossier.
 
 Exemples :
 
 * création ;
-* affectation ;
 * changement de conseiller ;
 * changement de statut ;
 * clôture.
 
-Ce journal permet d'assurer la traçabilité des actions.
+Ce journal assure la traçabilité des actions.
 
 ---
 
@@ -126,6 +177,8 @@ Les fichiers peuvent être associés à :
 
 * une personne ;
 * une demande ;
+* un entretien ;
+* un contrat ;
 * un dossier ;
 * une activité.
 
@@ -145,12 +198,15 @@ Le profil utilisateur détermine :
 
 ## counters
 
-Collection utilisée pour générer les numéros séquentiels.
+Collection utilisée pour générer les numéros métier.
 
 Exemples :
 
 * numéro de personne ;
 * numéro de demande ;
+* numéro de rendez-vous ;
+* numéro d'entretien ;
+* numéro de contrat ;
 * numéro de dossier.
 
 ---
@@ -159,20 +215,30 @@ Exemples :
 
 ```text
 people
-   │
-   ├──────────────┐
-   │              │
-   ▼              ▼
-requests       cases
-   │              │
-   │              ├──────────────┐
-   │              │              │
-   ▼              ▼              ▼
-case_activities  case_history  attachments
+│
+├────────────── requests
+│
+├────────────── appointments
+│
+├────────────── interviews
+│
+├────────────── contracts
+│
+└────────────── cases
+                    │
+                    ├────────────── case_activities
+                    │
+                    ├────────────── case_history
+                    │
+                    └────────────── attachments
 
-people ───────────────────────► attachments
+people ─────────────────────────► attachments
 
-requests ─────────────────────► attachments
+requests ───────────────────────► attachments
+
+interviews ─────────────────────► attachments
+
+contracts ──────────────────────► attachments
 ```
 
 ---
@@ -187,21 +253,36 @@ Exemples :
 
 ```text
 MRA-P-000001
-MRA-P-000002
 ```
 
 **Demandes**
 
 ```text
 MRA-R-000001
-MRA-R-000002
+```
+
+**Rendez-vous**
+
+```text
+MRA-A-000001
+```
+
+**Entretiens**
+
+```text
+MRA-I-000001
+```
+
+**Contrats**
+
+```text
+MRA-T-000001
 ```
 
 **Dossiers**
 
 ```text
 MRA-C-000001
-MRA-C-000002
 ```
 
 Les identifiants Firestore ne sont jamais utilisés comme numéros métier.
@@ -212,13 +293,13 @@ Les identifiants Firestore ne sont jamais utilisés comme numéros métier.
 
 Les documents sont stockés dans Firebase Storage.
 
-Organisation proposée :
-
 ```text
 storage/
 │
 ├── people/
 ├── requests/
+├── interviews/
+├── contracts/
 ├── cases/
 └── activities/
 ```
@@ -229,16 +310,21 @@ Chaque document est référencé dans la collection **attachments**.
 
 # 8. Index Firestore
 
-Les index seront créés en fonction des besoins des écrans de recherche et des tableaux de bord.
+Les index seront créés selon les besoins des écrans de recherche et des tableaux de bord.
 
-Les principaux champs concernés sont notamment :
+Les principaux champs concernés sont :
 
 * personId
 * requestId
+* appointmentId
+* interviewId
+* contractId
 * caseId
-* status
 * assignedCounselorId
 * primaryCounselorId
+* status
+* interviewDate
+* appointmentDate
 * createdAt
 * updatedAt
 
@@ -246,9 +332,9 @@ Les principaux champs concernés sont notamment :
 
 # 9. Suppression des données
 
-Les données métier ne sont pas supprimées physiquement.
+Les données métier ne sont jamais supprimées physiquement.
 
-Les dossiers et demandes sont clôturés selon leur cycle de vie afin de conserver l'historique.
+Les demandes et les dossiers suivent leur cycle de vie afin de conserver l'historique.
 
 Les documents associés restent accessibles aux utilisateurs autorisés.
 
@@ -265,13 +351,13 @@ L'accès aux données est contrôlé par :
 
 ---
 
-# 11. Sauvegarde et évolutivité
+# 11. Évolutivité
 
 La structure de la base de données est conçue pour permettre :
 
-* l'ajout de nouvelles collections ;
-* l'ajout de nouveaux modules ;
-* l'évolution des workflows métier ;
+* l'ajout de nouveaux types d'activités ;
+* l'ajout de nouveaux documents ;
+* l'évolution des modules métier ;
 
 sans remettre en cause les données existantes.
 
@@ -279,4 +365,16 @@ sans remettre en cause les données existantes.
 
 # 12. Conclusion
 
-La base de données du MRA est organisée autour des principaux objets métier du ministère : les personnes, les demandes d'entretien et les dossiers de prise en charge. Cette organisation garantit la cohérence des données, leur traçabilité et leur évolutivité tout en restant simple à maintenir.
+La base de données du MRA est organisée autour du **parcours de la personne**. Elle distingue clairement les objets métier (personnes, demandes, contrats, dossiers) des événements et activités (rendez-vous, entretiens, suivis, notes, recommandations). Cette organisation garantit une structure simple, cohérente et fidèle au fonctionnement réel du Ministère de la Relation d'Aide.
+
+---
+
+### Une seule recommandation
+
+Je remplacerais **`case_activities`** par **`activities`**.
+
+Pourquoi ?
+
+Aujourd'hui, les activités sont effectivement liées à un dossier. Mais demain, vous pourriez vouloir enregistrer d'autres activités (par exemple une réunion interne, une visite à domicile préparatoire ou une action qui ne dépend pas d'un dossier). Un nom plus générique comme `activities` laisse cette possibilité tout en conservant le champ `caseId` pour rattacher une activité à un dossier lorsque c'est le cas.
+
+Ce n'est pas indispensable pour la V1, mais c'est un petit choix de nommage qui peut faciliter l'évolution future sans compliquer le modèle actuel.

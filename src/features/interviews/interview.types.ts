@@ -18,6 +18,7 @@ export interface Interview {
   summary?: string;
   observations?: string;
   recommendations?: string;
+  decisionId?: string;
   createdAt: Timestamp;
   createdBy: string;
   createdByName?: string;

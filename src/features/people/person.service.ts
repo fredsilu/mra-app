@@ -1,187 +1,120 @@
-// src/services/person.service.ts
-
 import {
   collection,
   doc,
   getDoc,
-  setDoc,
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore';
 
 import { db } from '@/config/firebase';
-import { Person } from '@/features/people/person.types';
 import { getNextCounterValue } from '@/features/counters/counter.service';
+import { Person, PersonFormValues } from './person.types';
 
 function normalizeName(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 export function normalizePhone(value: string): string {
   let phone = value.replace(/\D/g, '');
-
-  if (phone.startsWith('00')) {
-    phone = phone.slice(2);
-  }
-
-  if (phone.startsWith('0')) {
-    phone = `243${phone.slice(1)}`;
-  }
-
+  if (phone.startsWith('00')) phone = phone.slice(2);
+  if (phone.startsWith('0')) phone = `243${phone.slice(1)}`;
   return phone;
 }
 
-export async function getPersonById(
-  personId: string
-): Promise<Person | null> {
-  const personReference = doc(db, 'people', personId);
-  const snapshot = await getDoc(personReference);
-
-  if (!snapshot.exists()) {
-    return null;
-  }
-
-  return {
-    id: snapshot.id,
-    ...(snapshot.data() as Omit<Person, 'id'>),
-  };
+function cleanValues(values: Partial<PersonFormValues>) {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => value !== undefined)
+  );
 }
 
-export async function updatePerson(
-  personId: string,
-  person: Partial<
-    Omit<Person, 'id' | 'mraNumber' | 'createdAt' | 'updatedAt'>
-  >
-): Promise<void> {
-  const personReference = doc(db, 'people', personId);
-
-  const updateData: Record<string, unknown> = {
-    ...person,
-    updatedAt: serverTimestamp(),
-  };
-
-  if (person.fullName !== undefined) {
-    updateData.normalizedFullName = normalizeName(person.fullName);
-  }
-
-  if (person.phone !== undefined) {
-    updateData.normalizedPhone = person.phone.trim()
-      ? normalizePhone(person.phone)
-      : '';
-  }
-
-  const cleanData = Object.fromEntries(
-    Object.entries(updateData).filter(([, value]) => value !== undefined)
-  );
-
-  await updateDoc(personReference, cleanData);
+export async function getPersonById(personId: string): Promise<Person | null> {
+  const snapshot = await getDoc(doc(db, 'people', personId));
+  if (!snapshot.exists()) return null;
+  return { id: snapshot.id, ...(snapshot.data() as Omit<Person, 'id'>) };
 }
 
-export async function createPerson(
-  person: Omit<Person, 'id' | 'mraNumber' | 'createdAt' | 'updatedAt'>
-): Promise<string> {
-  const nextNumber = await getNextCounterValue('people');
-
-  const mraNumber = `MRA-${String(nextNumber).padStart(6, '0')}`;
-
-  const personReference = doc(collection(db, 'people'));
-
-  const personData = Object.fromEntries(
-    Object.entries(person).filter(([, value]) => value !== undefined)
+export async function getPeople(): Promise<Person[]> {
+  const snapshot = await getDocs(
+    query(collection(db, 'people'), where('isArchived', '==', false))
   );
 
-  await setDoc(personReference, {
-    ...personData,
-    normalizedFullName: normalizeName(person.fullName),
-    normalizedPhone: person.phone?.trim()
-      ? normalizePhone(person.phone)
-      : '',
-    mraNumber,
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...(item.data() as Omit<Person, 'id'>),
+  }));
+}
+
+export async function createPerson(values: PersonFormValues): Promise<string> {
+  const number = await getNextCounterValue('people');
+  const reference = doc(collection(db, 'people'));
+
+  await setDoc(reference, {
+    ...cleanValues(values),
+    normalizedFullName: normalizeName(values.fullName),
+    normalizedPhone: values.phone?.trim() ? normalizePhone(values.phone) : '',
+    mraNumber: `MRA-P-${String(number).padStart(6, '0')}`,
+    isArchived: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 
-  return personReference.id;
+  return reference.id;
 }
 
-export async function getPeople(): Promise<Person[]> {
-  const peopleQuery = query(
-    collection(db, 'people'),
-    where('isArchived', '==', false)
+export async function updatePerson(
+  personId: string,
+  values: Partial<PersonFormValues> & { isArchived?: boolean }
+): Promise<void> {
+  const data: Record<string, unknown> = {
+    ...cleanValues(values),
+    updatedAt: serverTimestamp(),
+  };
+
+  if (values.fullName !== undefined) {
+    data.normalizedFullName = normalizeName(values.fullName);
+  }
+  if (values.phone !== undefined) {
+    data.normalizedPhone = values.phone.trim()
+      ? normalizePhone(values.phone)
+      : '';
+  }
+
+  await updateDoc(doc(db, 'people', personId), data);
+}
+
+export async function findPersonByPhone(phone: string): Promise<Person | null> {
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return null;
+
+  const snapshot = await getDocs(
+    query(
+      collection(db, 'people'),
+      where('normalizedPhone', '==', normalizedPhone)
+    )
+  );
+  const match = snapshot.docs[0];
+  return match
+    ? { id: match.id, ...(match.data() as Omit<Person, 'id'>) }
+    : null;
+}
+
+export async function findPeopleByExactName(fullName: string): Promise<Person[]> {
+  const normalizedFullName = normalizeName(fullName);
+  if (!normalizedFullName) return [];
+
+  const snapshot = await getDocs(
+    query(
+      collection(db, 'people'),
+      where('normalizedFullName', '==', normalizedFullName)
+    )
   );
 
-  const snapshot = await getDocs(peopleQuery);
-
-  return snapshot.docs.map((document) => ({
-    id: document.id,
-    ...(document.data() as Omit<Person, 'id'>),
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...(item.data() as Omit<Person, 'id'>),
   }));
-}
-
-export async function findPersonByPhone(
-  phone: string
-): Promise<Person | null> {
-  const normalizedPhone = normalizePhone(phone);
-
-  if (!normalizedPhone) {
-    return null;
-  }
-
-  const snapshot = await getDocs(collection(db, 'people'));
-
-  for (const document of snapshot.docs) {
-    const data = document.data() as Omit<Person, 'id'> & {
-      normalizedPhone?: string;
-    };
-
-    const storedPhone =
-      data.normalizedPhone ||
-      (data.phone ? normalizePhone(data.phone) : '');
-
-    if (storedPhone === normalizedPhone) {
-      return {
-        id: document.id,
-        ...data,
-      };
-    }
-  }
-
-  return null;
-}
-
-export async function findPeopleByExactName(
-  fullName: string
-): Promise<Person[]> {
-  const normalizedFullName = normalizeName(fullName);
-
-  if (!normalizedFullName) {
-    return [];
-  }
-
-  const snapshot = await getDocs(collection(db, 'people'));
-
-  return snapshot.docs
-    .map((document) => {
-      const data = document.data() as Omit<Person, 'id'> & {
-        normalizedFullName?: string;
-      };
-
-      return {
-        id: document.id,
-        ...data,
-      };
-    })
-    .filter((person) => {
-      const storedName =
-        person.normalizedFullName ||
-        normalizeName(person.fullName);
-
-      return storedName === normalizedFullName;
-    });
 }

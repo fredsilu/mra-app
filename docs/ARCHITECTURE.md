@@ -1,6 +1,4 @@
-Parfait. Je pense que nous avons trouvé le bon équilibre : **être professionnels sans transformer le projet en usine à gaz**.
-
-Je te propose un `ARCHITECTURE.md` qui tient en 4 à 5 pages maximum et qui servira de référence pendant tout le projet.
+Je suis d'accord avec l'esprit de ce document. Je ferais simplement quelques ajustements pour qu'il reflète ce que nous avons décidé ensemble, sans ajouter de complexité.
 
 ---
 
@@ -10,34 +8,40 @@ Je te propose un `ARCHITECTURE.md` qui tient en 4 à 5 pages maximum et qui serv
 
 ## 1. Objectif
 
-L'application MRA (Ministère de la Relation d'Aide) permet de gérer l'ensemble du processus de relation d'aide de l'ICC, depuis la demande d'entretien jusqu'à la clôture de la prise en charge.
+L'application MRA (Ministère de la Relation d'Aide) permet de gérer le parcours d'une personne, depuis sa demande de relation d'aide jusqu'à la clôture de son accompagnement.
 
-L'application doit permettre :
+L'application permet notamment de gérer :
 
-* la gestion des personnes ;
-* la gestion des demandes d'entretien ;
-* la gestion des dossiers de prise en charge ;
-* le suivi des entretiens et recommandations ;
-* la gestion des utilisateurs et des permissions ;
-* la traçabilité complète des actions.
+* les personnes ;
+* les demandes ;
+* les rendez-vous ;
+* les entretiens ;
+* les contrats de prise en charge ;
+* les dossiers ;
+* les activités du dossier (entretiens, suivis, notes, recommandations...) ;
+* les utilisateurs et leurs permissions ;
+* la traçabilité des actions.
 
 ---
 
 # 2. Principes d'architecture
 
-Le projet est construit autour de trois principes.
+Le projet est construit autour de quatre principes.
 
 ### 1. Le métier pilote le développement
 
-Toute décision technique doit respecter le fonctionnement réel du MRA.
+Toute décision technique doit respecter le fonctionnement réel du Ministère de la Relation d'Aide.
+
+L'application s'adapte au ministère, jamais l'inverse.
 
 ### 2. Une responsabilité = un module
 
 Chaque module possède :
 
-* ses types
-* ses services
-* ses écrans
+* ses types ;
+* ses services ;
+* ses composants ;
+* ses écrans.
 
 ### 3. Une seule source de vérité
 
@@ -45,13 +49,21 @@ Une information ne doit jamais être dupliquée.
 
 Exemple :
 
-Le nom de la demande ne doit pas être recopié dans le dossier.
+Le dossier référence la personne et la demande sans recopier inutilement leurs informations.
 
-Le dossier référence simplement la demande.
+### 4. Principe de simplicité
+
+> **Si une fonctionnalité peut être réalisée simplement sans perdre en qualité, nous privilégions toujours la solution la plus simple.**
+
+Nous évitons :
+
+* les couches inutiles ;
+* les workflows artificiels ;
+* les fonctionnalités qui ne répondent pas à un besoin métier réel.
 
 ---
 
-# 3. Workflow principal
+# 3. Parcours principal
 
 ```text
 Personne
@@ -60,28 +72,27 @@ Demande
     ↓
 Affectation
     ↓
-Premier entretien
+Rendez-vous (0..n)
     ↓
-Décision
-
-    ├── Refus
-    │      ↓
-    │   Fin
+Entretien(s) (0..n)
     │
-    └── Acceptation
+    ├── Fin du parcours
+    │
+    └── Si prise en charge
             ↓
-        Signature contrat
+     Signature du contrat
             ↓
-     Dossier de prise en charge
+     Création du dossier
             ↓
-      Entretiens
-            ↓
-         Suivis
-            ↓
-     Recommandations
-            ↓
-      Clôture
+        Accompagnement
+            ├── Entretiens
+            ├── Suivis
+            ├── Notes
+            ├── Recommandations
+            └── Clôture
 ```
+
+> Les échanges entre conseillers, les validations internes ou les décisions pastorales ne sont pas modélisés dans l'application. Le MRA enregistre les faits du parcours, sans gérer le processus interne de décision.
 
 ---
 
@@ -92,14 +103,21 @@ Le projet est composé des modules suivants :
 * Authentification
 * Personnes
 * Demandes
+* Rendez-vous
+* Entretiens
+* Contrats
 * Dossiers
-* Activités
-* Documents
 * Utilisateurs
 * Agenda
 * Logistique
 
-Chaque module est indépendant.
+Le dossier regroupe ensuite les activités de prise en charge :
+
+* Entretiens
+* Suivis
+* Notes
+* Recommandations
+* Clôture
 
 ---
 
@@ -107,29 +125,17 @@ Chaque module est indépendant.
 
 ```text
 Connexion
-
-↓
-
+    ↓
 Dashboard
-
-↓
-
+    ↓
 Personnes
-
-↓
-
+    ↓
 Demandes
-
-↓
-
-Dossiers
-
-↓
-
+    ↓
 Agenda
-
-↓
-
+    ↓
+Dossiers
+    ↓
 Utilisateurs
 ```
 
@@ -137,16 +143,17 @@ Utilisateurs
 
 # 6. Architecture technique
 
-Chaque module suit la même structure.
+Chaque module suit la même organisation.
 
 ```text
-feature/
-    types
-    services
-    components
+features/
+    module/
+        types.ts
+        service.ts
+        components/
 ```
 
-Les écrans Expo Router utilisent les services.
+Les écrans Expo Router utilisent uniquement les services.
 
 Les services communiquent avec Firestore.
 
@@ -161,25 +168,30 @@ Collections principales :
 ```text
 people
 requests
+appointments
+interviews
+contracts
 cases
 case_activities
-case_history
 users
 attachments
 counters
 ```
 
+Les activités du dossier (entretiens, suivis, notes, recommandations...) sont regroupées dans `case_activities`.
+
 ---
 
-# 8. Règles importantes
+# 8. Règles métier
 
 * Une personne peut avoir plusieurs demandes.
-* Une personne peut avoir plusieurs dossiers au cours de sa vie.
-* Une demande peut créer au maximum un dossier.
+* Une personne peut avoir plusieurs rendez-vous.
+* Une personne peut avoir plusieurs entretiens avant l'ouverture d'un dossier.
+* Une demande peut donner lieu à un seul dossier.
 * Un dossier ne peut pas exister sans demande.
-* Un dossier ne peut être créé qu'après une décision positive et la signature du contrat.
-* Toutes les actions importantes sont historisées.
-* Les suppressions physiques sont interdites pour les données métier.
+* Un dossier est créé après la signature du contrat.
+* Une fois le dossier créé, toutes les activités de prise en charge lui sont rattachées.
+* Les suppressions physiques des données métier sont interdites.
 
 ---
 
@@ -195,31 +207,19 @@ Aucune sécurité ne repose uniquement sur l'interface utilisateur.
 
 ---
 
-# 10. Objectif du projet
+# 10. Vision du projet
 
-Le projet doit rester :
+Le MRA doit rester :
 
-* simple à comprendre ;
+* simple à utiliser ;
+* fidèle au fonctionnement réel du ministère ;
 * facile à maintenir ;
-* évolutif ;
-* fidèle au fonctionnement réel du MRA.
+* évolutif.
+
+**Principe fondamental :**
+
+> **Le MRA est un outil d'accompagnement du ministère, pas un outil qui impose son fonctionnement. Il enregistre les faits du parcours de la personne, sans alourdir le travail des conseillers.**
 
 ---
 
-## Une seule amélioration que je souhaiterais apporter
-
-J'ajouterais un principe qui, selon moi, va énormément nous aider :
-
-### **Principe de simplicité**
-
-> **Si une fonctionnalité peut être réalisée de manière simple sans perdre en qualité, nous choisirons toujours la solution la plus simple.**
-
-Cela signifie que nous éviterons :
-
-* les abstractions inutiles ;
-* les couches supplémentaires sans valeur métier ;
-* les optimisations prématurées.
-
-Je pense que ce principe correspond bien à ta remarque : **"avançons et ne compliquons pas les choses"**.
-
-À partir de maintenant, chaque fois que nous hésiterons entre une solution "très élégante" et une solution "simple et robuste", nous choisirons la seconde. C'est souvent ce qui donne les applications les plus faciles à faire évoluer sur le long terme.
+Je n'ai volontairement fait que des ajustements issus de nos décisions récentes (suppression de la notion de "décision" comme module, ajout des rendez-vous et des entretiens, clarification du rôle du dossier et du principe de simplicité), sans transformer la structure de ton document. Je pense que cette version peut devenir la référence du projet.

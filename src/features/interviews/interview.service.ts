@@ -24,6 +24,7 @@ import {
 } from './interview.types';
 
 const COLLECTION_NAME = 'interviews';
+const APPOINTMENTS_COLLECTION_NAME = 'appointments';
 
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim()
@@ -37,7 +38,10 @@ function date(value: unknown): Timestamp | undefined {
     : undefined;
 }
 
-function required(value: string, code: string): string {
+function required(
+  value: string,
+  code: string
+): string {
   const result = value.trim();
 
   if (!result) {
@@ -53,59 +57,87 @@ function mapInterview(
 ): Interview {
   return {
     id,
+
     interviewNumber:
       typeof data.interviewNumber === 'string'
         ? data.interviewNumber
         : '',
+
     appointmentId:
       typeof data.appointmentId === 'string'
         ? data.appointmentId
         : '',
+
     requestId:
       typeof data.requestId === 'string'
         ? data.requestId
         : '',
+
     personId:
       typeof data.personId === 'string'
         ? data.personId
         : '',
+
     personName:
       typeof data.personName === 'string'
         ? data.personName
         : '',
+
     counselorId:
       typeof data.counselorId === 'string'
         ? data.counselorId
         : '',
+
     counselorName:
       typeof data.counselorName === 'string'
         ? data.counselorName
         : '',
+
     status:
       data.status === 'completed'
         ? 'completed'
         : 'draft',
+
     startedAt:
       date(data.startedAt) ??
       Timestamp.now(),
-    endedAt: date(data.endedAt),
-    summary: text(data.summary),
-    observations: text(data.observations),
-    recommendations: text(data.recommendations),
+
+    endedAt:
+      date(data.endedAt),
+
+    summary:
+      text(data.summary),
+
+    observations:
+      text(data.observations),
+
+    recommendations:
+      text(data.recommendations),
+
+    decisionId:
+      text(data.decisionId),
+
     createdAt:
       date(data.createdAt) ??
       Timestamp.now(),
+
     createdBy:
       typeof data.createdBy === 'string'
         ? data.createdBy
         : '',
+
     createdByName:
       text(data.createdByName),
-    updatedAt: date(data.updatedAt),
+
+    updatedAt:
+      date(data.updatedAt),
+
     completedAt:
       date(data.completedAt),
+
     completedBy:
       text(data.completedBy),
+
     completedByName:
       text(data.completedByName),
   };
@@ -132,7 +164,9 @@ export async function getInterviews(): Promise<
 export async function getInterview(
   id: string
 ): Promise<Interview | null> {
-  if (!id.trim()) {
+  const interviewId = id.trim();
+
+  if (!interviewId) {
     return null;
   }
 
@@ -140,7 +174,7 @@ export async function getInterview(
     doc(
       db,
       COLLECTION_NAME,
-      id.trim()
+      interviewId
     )
   );
 
@@ -155,7 +189,10 @@ export async function getInterview(
 export async function getInterviewByAppointmentId(
   appointmentId: string
 ): Promise<Interview | null> {
-  if (!appointmentId.trim()) {
+  const normalizedAppointmentId =
+    appointmentId.trim();
+
+  if (!normalizedAppointmentId) {
     return null;
   }
 
@@ -165,7 +202,7 @@ export async function getInterviewByAppointmentId(
       where(
         'appointmentId',
         '==',
-        appointmentId.trim()
+        normalizedAppointmentId
       ),
       limit(1)
     )
@@ -191,11 +228,12 @@ export async function createInterview(
     'APPOINTMENT_ID_REQUIRED'
   );
 
-  if (
+  const existingInterview =
     await getInterviewByAppointmentId(
       appointmentId
-    )
-  ) {
+    );
+
+  if (existingInterview) {
     throw new Error(
       'INTERVIEW_ALREADY_EXISTS'
     );
@@ -203,7 +241,7 @@ export async function createInterview(
 
   const appointmentRef = doc(
     db,
-    'appointments',
+    APPOINTMENTS_COLLECTION_NAME,
     appointmentId
   );
 
@@ -219,25 +257,34 @@ export async function createInterview(
   const appointment =
     appointmentSnapshot.data();
 
-  if (appointment.status !== 'completed') {
+  /*
+   * L’entretien démarre pendant le rendez-vous.
+   * Le rendez-vous doit donc être confirmé,
+   * et non déjà réalisé.
+   */
+  if (appointment.status !== 'confirmed') {
     throw new Error(
-      'APPOINTMENT_NOT_COMPLETED'
+      'APPOINTMENT_NOT_CONFIRMED'
     );
   }
 
-  if (
-    appointment.requestId !==
-    data.requestId.trim()
-  ) {
+  const requestId = required(
+    data.requestId,
+    'REQUEST_ID_REQUIRED'
+  );
+
+  const personId = required(
+    data.personId,
+    'PERSON_ID_REQUIRED'
+  );
+
+  if (appointment.requestId !== requestId) {
     throw new Error(
       'APPOINTMENT_REQUEST_MISMATCH'
     );
   }
 
-  if (
-    appointment.personId !==
-    data.personId.trim()
-  ) {
+  if (appointment.personId !== personId) {
     throw new Error(
       'APPOINTMENT_PERSON_MISMATCH'
     );
@@ -264,15 +311,9 @@ export async function createInterview(
     interviewNumber,
     appointmentId,
 
-    requestId: required(
-      data.requestId,
-      'REQUEST_ID_REQUIRED'
-    ),
+    requestId,
 
-    personId: required(
-      data.personId,
-      'PERSON_ID_REQUIRED'
-    ),
+    personId,
 
     personName: required(
       data.personName,
@@ -294,11 +335,13 @@ export async function createInterview(
     startedAt: Timestamp.fromDate(
       data.startedAt
     ),
+
     endedAt: null,
 
     summary: null,
     observations: null,
     recommendations: null,
+    decisionId: null,
 
     createdAt: serverTimestamp(),
 
@@ -332,8 +375,13 @@ export async function updateInterview(
   id: string,
   data: UpdateInterviewData
 ): Promise<void> {
+  const interviewId = required(
+    id,
+    'INTERVIEW_ID_REQUIRED'
+  );
+
   const interview =
-    await getInterview(id);
+    await getInterview(interviewId);
 
   if (!interview) {
     throw new Error(
@@ -353,7 +401,7 @@ export async function updateInterview(
     doc(
       db,
       COLLECTION_NAME,
-      id.trim()
+      interviewId
     ),
     {
       ...(data.summary !== undefined
@@ -390,8 +438,18 @@ export async function completeInterview(
   userId: string,
   userName: string
 ): Promise<void> {
+  const interviewId = required(
+    id,
+    'INTERVIEW_ID_REQUIRED'
+  );
+
+  const completedBy = required(
+    userId,
+    'USER_ID_REQUIRED'
+  );
+
   const interview =
-    await getInterview(id);
+    await getInterview(interviewId);
 
   if (!interview) {
     throw new Error(
@@ -411,28 +469,68 @@ export async function completeInterview(
     );
   }
 
-  await updateDoc(
-    doc(
-      db,
-      COLLECTION_NAME,
-      id.trim()
-    ),
-    {
-      status: 'completed',
-      endedAt: serverTimestamp(),
+  if (!interview.appointmentId.trim()) {
+    throw new Error(
+      'APPOINTMENT_ID_REQUIRED'
+    );
+  }
 
-      completedAt:
-        serverTimestamp(),
-
-      completedBy: required(
-        userId,
-        'USER_ID_REQUIRED'
-      ),
-
-      completedByName:
-        userName.trim() || null,
-
-      updatedAt: serverTimestamp(),
-    }
+  const interviewRef = doc(
+    db,
+    COLLECTION_NAME,
+    interviewId
   );
+
+  const appointmentRef = doc(
+    db,
+    APPOINTMENTS_COLLECTION_NAME,
+    interview.appointmentId
+  );
+
+  const appointmentSnapshot =
+    await getDoc(appointmentRef);
+
+  if (!appointmentSnapshot.exists()) {
+    throw new Error(
+      'APPOINTMENT_NOT_FOUND'
+    );
+  }
+
+  const appointment =
+    appointmentSnapshot.data();
+
+  if (appointment.status !== 'confirmed') {
+    throw new Error(
+      'APPOINTMENT_NOT_CONFIRMED'
+    );
+  }
+
+  const completedByName =
+    userName.trim() || null;
+
+  const batch = writeBatch(db);
+
+  batch.update(interviewRef, {
+    status: 'completed',
+
+    endedAt: serverTimestamp(),
+    completedAt: serverTimestamp(),
+
+    completedBy,
+    completedByName,
+
+    updatedAt: serverTimestamp(),
+  });
+
+  batch.update(appointmentRef, {
+    status: 'completed',
+
+    completedAt: serverTimestamp(),
+    completedBy,
+    completedByName,
+
+    updatedAt: serverTimestamp(),
+  });
+
+  await batch.commit();
 }

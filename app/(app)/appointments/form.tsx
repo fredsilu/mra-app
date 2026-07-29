@@ -315,6 +315,7 @@ export default function AppointmentFormScreen() {
           createdByName:
             profile.displayName,
         });
+    
 
       Alert.alert(
         'Succès',
@@ -332,6 +333,8 @@ export default function AppointmentFormScreen() {
           },
         ]
       );
+
+          router.back();
     } catch (error) {
       console.error(
         'Erreur lors de la création du rendez-vous :',

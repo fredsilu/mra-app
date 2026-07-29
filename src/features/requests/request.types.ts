@@ -4,7 +4,10 @@ import { Timestamp } from 'firebase/firestore';
 export type RequestStatus =
   | 'new'
   | 'assigned'
-  | 'cancelled';
+  | 'cancelled'
+  | 'accepted'
+  | 'refused'
+  | 'referred';
 
 export type RequestPriority =
   | 'low'
@@ -23,6 +26,12 @@ export interface HelpRequest {
   assignedCounselorName?: string;
 
   initialAppointmentId?: string;
+
+  decisionId?: string;
+  decision?: 'accepted' | 'refused' | 'referred';
+  decisionDate?: Timestamp;
+  careType?: string;
+  caseId?: string;
 
   status: RequestStatus;
   priority: RequestPriority;
@@ -64,6 +73,12 @@ export type UpdateHelpRequestData = {
 
   initialAppointmentId?: string | null;
 
+  decisionId?: string | null;
+  decision?: 'accepted' | 'refused' | 'referred' | null;
+  decisionDate?: Timestamp | null;
+  careType?: string | null;
+  caseId?: string | null;
+
   status?: RequestStatus;
   priority?: RequestPriority;
 
@@ -84,6 +99,9 @@ export const REQUEST_STATUS_LABELS: Record<
   new: 'Nouvelle',
   assigned: 'Assignée',
   cancelled: 'Annulée',
+  accepted: 'Acceptée',
+  refused: 'Refusée',
+  referred: 'Orientée',
 };
 
 export const REQUEST_PRIORITY_LABELS: Record<
@@ -111,6 +129,18 @@ export const REQUEST_STATUS_OPTIONS: Array<{
   {
     label: 'Annulée',
     value: 'cancelled',
+  },
+  {
+    label: 'Acceptée',
+    value: 'accepted',
+  },
+  {
+    label: 'Refusée',
+    value: 'refused',
+  },
+  {
+    label: 'Orientée',
+    value: 'referred',
   },
 ];
 

@@ -1,227 +1,67 @@
-//app/(app)/people/index.tsx
-
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  SafeAreaView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { router } from 'expo-router';
+import { FlatList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/AppButton';
 import { AppInput } from '@/components/ui/AppInput';
-import { COLORS } from '@/constants/theme';
-import { getPeople } from '@/features/people/person.service';
-import { Person } from '@/features/people/person.types';
+import { EmptyState } from '@/components/common/EmptyState';
+import { LoadingView } from '@/components/common/LoadingView';
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { PersonCard } from '@/features/people/components/PersonCard';
+import { PeopleTable } from '@/features/people/components/PeopleTable';
+import { usePeople } from '@/features/people/hooks/usePeople';
 
 export default function PeopleScreen() {
-  const [people, setPeople] = useState<Person[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const vm = usePeople();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
+  const openPerson = (id: string) => router.push({ pathname: '/people/form', params: { id } });
 
-  const loadPeople = useCallback(async (refreshing = false) => {
-    try {
-      if (refreshing) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-
-      const result = await getPeople();
-
-      const sortedPeople = [...result].sort((a, b) =>
-        a.fullName.localeCompare(b.fullName)
-      );
-
-      setPeople(sortedPeople);
-    } catch (error) {
-      console.error('Erreur lors du chargement des personnes :', error);
-
-      Alert.alert(
-        'Erreur',
-        'Impossible de charger la liste des personnes.'
-      );
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadPeople();
-    }, [loadPeople])
-  );
-
-  const filteredPeople = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-
-    if (!normalizedSearch) {
-      return people;
-    }
-
-    return people.filter((person) => {
-      const fullName = person.fullName.toLowerCase();
-      const phone = person.phone?.toLowerCase() ?? '';
-      const mraNumber = person.mraNumber?.toLowerCase() ?? '';
-
-      return (
-        fullName.includes(normalizedSearch) ||
-        phone.includes(normalizedSearch) ||
-        mraNumber.includes(normalizedSearch)
-      );
-    });
-  }, [people, searchQuery]);
-
-  if (isLoading) {
-    return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: COLORS.light,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator size="large" />
-
-        <Text
-          style={{
-            marginTop: 12,
-            color: COLORS.text,
-          }}
-        >
-          Chargement des personnes...
-        </Text>
-      </SafeAreaView>
-    );
-  }
+  if (vm.isLoading) return <LoadingView label="Chargement des personnes..." />;
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: COLORS.light,
-        padding: 16,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 26,
-          fontWeight: '700',
-          color: COLORS.text,
-          marginBottom: 20,
-        }}
-      >
-        Personnes
-      </Text>
-
-      <AppButton
-        title="Nouvelle personne"
-        onPress={() => router.push('/people/form')}
+    <Page>
+      <PageHeader
+        title="Personnes"
+        subtitle="Accueillir, connaître et accompagner chaque personne avec attention."
+        action={<AppButton title="Nouvelle personne" onPress={() => router.push('/people/form')} />}
       />
 
-      <View style={{ height: 14 }} />
+      <View style={styles.toolbar}>
+        <View style={styles.search}>
+          <AppInput
+            value={vm.search}
+            onChangeText={vm.setSearch}
+            placeholder="Rechercher par nom, téléphone ou numéro MRA"
+            autoCapitalize="none"
+          />
+        </View>
+        <Text style={styles.count}>{vm.total} personne(s)</Text>
+      </View>
 
-      <AppInput
-        placeholder="Rechercher par nom, téléphone ou numéro MRA"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        autoCapitalize="none"
-      />
-
-      <Text
-        style={{
-          marginTop: 12,
-          marginBottom: 12,
-          color: COLORS.muted,
-        }}
-      >
-        {filteredPeople.length} personne(s)
-      </Text>
-
-      <FlatList
-        data={filteredPeople}
-        keyExtractor={(item) => item.id}
-        refreshing={isRefreshing}
-        onRefresh={() => loadPeople(true)}
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingBottom: 20,
-        }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: '/people/form',
-                params: { id: item.id },
-              })
-            }
-            style={{
-              backgroundColor: COLORS.white,
-              padding: 16,
-              borderRadius: 12,
-              marginBottom: 10,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: '700',
-                color: COLORS.text,
-              }}
-            >
-              {item.fullName}
-            </Text>
-
-            <Text
-              style={{
-                marginTop: 5,
-                color: COLORS.muted,
-              }}
-            >
-              {item.mraNumber || 'Numéro MRA non attribué'}
-            </Text>
-
-            <Text
-              style={{
-                marginTop: 3,
-                color: COLORS.muted,
-              }}
-            >
-              {item.phone || 'Aucun téléphone'}
-            </Text>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <View
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 30,
-            }}
-          >
-            <Text
-              style={{
-                color: COLORS.muted,
-                textAlign: 'center',
-              }}
-            >
-              {searchQuery.trim()
-                ? 'Aucune personne ne correspond à cette recherche.'
-                : 'Aucune personne enregistrée.'}
-            </Text>
-          </View>
-        }
-      />
-    </SafeAreaView>
+      {vm.people.length === 0 ? (
+        <EmptyState
+          title={vm.search ? 'Aucun résultat' : 'Aucune personne enregistrée'}
+          message={vm.search ? 'Essayez une autre recherche.' : 'Commencez par créer la première fiche.'}
+        />
+      ) : isDesktop ? (
+        <PeopleTable people={vm.people} onOpen={openPerson} />
+      ) : (
+        <FlatList
+          data={vm.people}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <PersonCard person={item} onPress={() => openPerson(item.id)} />}
+          refreshing={vm.isRefreshing}
+          onRefresh={vm.refresh}
+          scrollEnabled={false}
+        />
+      )}
+    </Page>
   );
 }
+
+const styles = StyleSheet.create({
+  toolbar: { alignItems: 'center', flexDirection: 'row', gap: 14, marginBottom: 16 },
+  search: { flex: 1 },
+  count: { color: '#64748B', fontSize: 13, fontWeight: '700' },
+});

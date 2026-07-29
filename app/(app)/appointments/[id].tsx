@@ -16,17 +16,17 @@ import {
   ScrollView,
   Text,
   View,
+  Platform,
 } from 'react-native';
 
-import { AppButton } from '@/components/ui/AppButton';
+import type {
+  UserRole,
+} from '@/features/users/user.types';
+import { AppointmentActions } from '@/features/appointments/components/AppointmentActions';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  cancelAppointment,
-  completeAppointment,
-  confirmAppointment,
   getAppointment,
-  markAppointmentNoShow,
 } from '@/features/appointments/appointment.service';
 import {
   Appointment,
@@ -124,7 +124,7 @@ export default function AppointmentDetailsScreen() {
   const { id } = useLocalSearchParams<{
     id?: string;
   }>();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
 
   const [appointment, setAppointment] =
     useState<Appointment | null>(null);
@@ -192,10 +192,88 @@ export default function AppointmentDetailsScreen() {
     action: (
       appointmentId: string,
       userId: string,
-      userName: string
+      userName: string,
+      userRole?: UserRole
     ) => Promise<void>
   ) {
-    if (!id || !profile || isSaving) {
+    if (isSaving) {
+      return;
+    }
+
+    if (!id) {
+      Alert.alert(
+        'Erreur',
+        'Identifiant du rendez-vous manquant.'
+      );
+      return;
+    }
+
+    if (!profile?.uid) {
+      Alert.alert(
+        'Erreur',
+        'Profil utilisateur non chargé.'
+      );
+      return;
+    }
+
+    const runAction = async () => {
+      try {
+        setIsSaving(true);
+
+        await action(
+          id,
+          profile.uid,
+          profile.displayName || 'Utilisateur MRA',
+          profile.role
+        );
+
+        await loadAppointment();
+
+        if (Platform.OS === 'web') {
+          window.alert(
+            'Le statut du rendez-vous a été mis à jour.'
+          );
+        } else {
+          Alert.alert(
+            'Succès',
+            'Le statut du rendez-vous a été mis à jour.'
+          );
+        }
+      } catch (error) {
+        console.error(
+          'Erreur lors du changement de statut :',
+          error
+        );
+
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Erreur inconnue';
+
+        if (Platform.OS === 'web') {
+          window.alert(
+            `Impossible de modifier le rendez-vous : ${errorMessage}`
+          );
+        } else {
+          Alert.alert(
+            'Modification impossible',
+            errorMessage
+          );
+        }
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const accepted = window.confirm(
+        `${title}\n\n${message}`
+      );
+
+      if (accepted) {
+        await runAction();
+      }
+
       return;
     }
 
@@ -206,28 +284,7 @@ export default function AppointmentDetailsScreen() {
       },
       {
         text: 'Confirmer',
-        onPress: async () => {
-          try {
-            setIsSaving(true);
-            await action(
-              id,
-              profile.uid,
-              profile.displayName
-            );
-            await loadAppointment();
-          } catch (error) {
-            console.error(
-              'Erreur lors du changement de statut :',
-              error
-            );
-            Alert.alert(
-              'Erreur',
-              'Impossible de modifier le rendez-vous.'
-            );
-          } finally {
-            setIsSaving(false);
-          }
-        },
+        onPress: runAction,
       },
     ]);
   }
@@ -251,9 +308,6 @@ export default function AppointmentDetailsScreen() {
     return null;
   }
 
-  const isActive =
-    appointment.status === 'scheduled' ||
-    appointment.status === 'confirmed';
 
   return (
     <SafeAreaView
@@ -298,7 +352,7 @@ export default function AppointmentDetailsScreen() {
             label="Type"
             value={
               APPOINTMENT_TYPE_LABELS[
-                appointment.type
+              appointment.type
               ]
             }
           />
@@ -306,7 +360,7 @@ export default function AppointmentDetailsScreen() {
             label="Statut"
             value={
               APPOINTMENT_STATUS_LABELS[
-                appointment.status
+              appointment.status
               ]
             }
           />
@@ -360,10 +414,9 @@ export default function AppointmentDetailsScreen() {
           />
           {appointment.confirmedAt ? (
             <InfoRow
-              label={`Confirmation par ${
-                appointment.confirmedByName ||
+              label={`Confirmation par ${appointment.confirmedByName ||
                 'un utilisateur'
-              }`}
+                }`}
               value={formatDate(
                 appointment.confirmedAt
               )}
@@ -371,10 +424,9 @@ export default function AppointmentDetailsScreen() {
           ) : null}
           {appointment.completedAt ? (
             <InfoRow
-              label={`Réalisation par ${
-                appointment.completedByName ||
+              label={`Réalisation par ${appointment.completedByName ||
                 'un utilisateur'
-              }`}
+                }`}
               value={formatDate(
                 appointment.completedAt
               )}
@@ -382,10 +434,9 @@ export default function AppointmentDetailsScreen() {
           ) : null}
           {appointment.cancelledAt ? (
             <InfoRow
-              label={`Annulation par ${
-                appointment.cancelledByName ||
+              label={`Annulation par ${appointment.cancelledByName ||
                 'un utilisateur'
-              }`}
+                }`}
               value={formatDate(
                 appointment.cancelledAt
               )}
@@ -393,10 +444,9 @@ export default function AppointmentDetailsScreen() {
           ) : null}
           {appointment.noShowAt ? (
             <InfoRow
-              label={`Absence constatée par ${
-                appointment.noShowByName ||
+              label={`Absence constatée par ${appointment.noShowByName ||
                 'un utilisateur'
-              }`}
+                }`}
               value={formatDate(
                 appointment.noShowAt
               )}
@@ -405,108 +455,12 @@ export default function AppointmentDetailsScreen() {
         </Section>
 
         <View style={{ gap: 12 }}>
-          {appointment.status === 'scheduled' ? (
-            <AppButton
-              title="Confirmer le rendez-vous"
-              disabled={isSaving}
-              onPress={() =>
-                executeAction(
-                  'Confirmer le rendez-vous',
-                  'Confirmer la présence prévue à ce rendez-vous ?',
-                  confirmAppointment
-                )
-              }
-            />
-          ) : null}
-
-          {isActive ? (
-            <>
-              <AppButton
-                title="Marquer comme réalisé"
-                disabled={isSaving}
-                onPress={() =>
-                  executeAction(
-                    'Rendez-vous réalisé',
-                    'Confirmer que ce rendez-vous a été réalisé ?',
-                    completeAppointment
-                  )
-                }
-              />
-
-              <AppButton
-                title="Marquer la personne absente"
-                disabled={isSaving}
-                onPress={() =>
-                  executeAction(
-                    'Personne absente',
-                    'Confirmer que la personne ne s’est pas présentée ?',
-                    markAppointmentNoShow
-                  )
-                }
-              />
-
-              <AppButton
-                title="Annuler le rendez-vous"
-                disabled={isSaving}
-                onPress={() =>
-                  executeAction(
-                    'Annuler le rendez-vous',
-                    'Voulez-vous réellement annuler ce rendez-vous ?',
-                    cancelAppointment
-                  )
-                }
-              />
-            </>
-          ) : null}
-
-          {appointment.status === 'completed' ? (
-            <AppButton
-              title={
-                interviewId
-                  ? 'Voir l’entretien'
-                  : 'Démarrer l’entretien'
-              }
-              disabled={isSaving}
-              onPress={() => {
-                if (interviewId) {
-                  router.push({
-                    pathname:
-                      '/interviews/[id]',
-                    params: {
-                      id: interviewId,
-                    },
-                  });
-                  return;
-                }
-
-                router.push({
-                  pathname: '/interviews/form',
-                  params: {
-                    appointmentId:
-                      appointment.id,
-                  },
-                });
-              }}
-            />
-          ) : null}
-
-          <AppButton
-            title="Voir la demande"
-            disabled={isSaving}
-            onPress={() =>
-              router.push({
-                pathname: '/requests/[id]',
-                params: {
-                  id: appointment.requestId,
-                },
-              })
-            }
-          />
-
-          <AppButton
-            title="Retour"
-            disabled={isSaving}
-            onPress={() => router.back()}
+          <AppointmentActions
+            appointment={appointment}
+            interviewId={interviewId}
+            profile={profile}
+            isSaving={isSaving}
+            executeAction={executeAction}
           />
         </View>
       </ScrollView>

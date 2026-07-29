@@ -29,6 +29,9 @@ const REQUEST_STATUSES: RequestStatus[] = [
   'new',
   'assigned',
   'cancelled',
+  'accepted',
+  'refused',
+  'referred',
 ];
 
 const REQUEST_PRIORITIES: RequestPriority[] = [
@@ -113,6 +116,25 @@ function mapHelpRequest(
       toOptionalString(
         data.initialAppointmentId
       ),
+
+    decisionId:
+      toOptionalString(data.decisionId),
+
+    decision:
+      data.decision === 'accepted' ||
+      data.decision === 'refused' ||
+      data.decision === 'referred'
+        ? data.decision
+        : undefined,
+
+    decisionDate:
+      toTimestamp(data.decisionDate),
+
+    careType:
+      toOptionalString(data.careType),
+
+    caseId:
+      toOptionalString(data.caseId),
 
     status: isRequestStatus(data.status)
       ? data.status
@@ -243,6 +265,12 @@ export async function createRequest(
     assignedCounselorName: null,
 
     initialAppointmentId: null,
+
+    decisionId: null,
+    decision: null,
+    decisionDate: null,
+    careType: null,
+    caseId: null,
 
     status: 'new',
     priority: data.priority,

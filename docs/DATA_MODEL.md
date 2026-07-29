@@ -1,30 +1,37 @@
-Entendu. Nous ne changeons plus rien.
+Je modifierais effectivement le modèle de données pour qu'il soit aligné avec ce que nous avons décidé. Aujourd'hui, il reste des traces de l'ancienne architecture (décision dans la demande, activités uniquement dans le dossier, absence des rendez-vous et des entretiens avant dossier).
 
-L'architecture est **figée**.
-
-Nous passons directement au deuxième document.
-
-# DATA_MODEL.md
-
-Ce document décrit uniquement les données du système.
+Voici la version que je figerais.
 
 ---
 
-# 1. Vue d'ensemble
+# DATA_MODEL.md
+
+## 1. Vue d'ensemble
 
 ```text
 Personne
-    │
-    ├── Demandes
-    │        │
-    │        └── 0 ou 1 Dossier
-    │                     │
-    │                     ├── Activités
-    │                     ├── Historique
-    │                     └── Documents
-    │
-    └── Plusieurs dossiers possibles au cours de la vie
+│
+├── Demandes
+│
+├── Rendez-vous
+│
+├── Entretiens (avant prise en charge)
+│
+├── Contrats
+│
+└── Dossiers
+      ├── Activités
+      ├── Historique
+      └── Documents
 ```
+
+Une personne peut avoir plusieurs demandes au cours de sa vie.
+
+Une demande peut conduire à une prise en charge ou non.
+
+Les premiers entretiens sont réalisés **avant** l'ouverture éventuelle d'un dossier.
+
+Après la signature du contrat, un dossier est créé et toutes les nouvelles activités y sont rattachées.
 
 ---
 
@@ -33,6 +40,9 @@ Personne
 ```text
 people
 requests
+appointments
+interviews
+contracts
 cases
 case_activities
 case_history
@@ -50,22 +60,28 @@ Une personne est enregistrée une seule fois.
 Une personne peut avoir :
 
 * plusieurs demandes ;
-* plusieurs dossiers de prise en charge.
+* plusieurs rendez-vous ;
+* plusieurs entretiens ;
+* plusieurs dossiers au cours de sa vie.
 
 Principaux champs :
 
 ```text
 id
 personNumber
+
 firstName
 lastName
 gender
 birthDate
+
 phone
 email
 address
+
 maritalStatus
 church
+
 createdAt
 updatedAt
 createdBy
@@ -77,15 +93,14 @@ createdBy
 
 Une demande représente la sollicitation initiale.
 
-Une demande appartient à une seule personne.
+Elle appartient à une seule personne.
 
-Une demande peut créer un seul dossier.
-
-Principaux champs :
+Elle peut conduire à l'ouverture d'un seul dossier.
 
 ```text
 id
 requestNumber
+
 personId
 
 requestedBy
@@ -99,15 +114,41 @@ status
 assignedCounselorId
 assignedCounselorName
 
-appointmentDate
-
-decision
-
-decisionDate
-
-contractSigned
-
 caseId
+
+createdAt
+updatedAt
+createdBy
+```
+
+> Plus de champ `decision`, `decisionDate` ou `contractSigned`. Ces éléments sont matérialisés par le contrat et le dossier.
+
+---
+
+# 5. Collection : appointments
+
+Les rendez-vous servent uniquement à planifier les rencontres.
+
+Ils ne contiennent aucun contenu métier.
+
+```text
+id
+
+appointmentNumber
+
+personId
+
+requestId
+
+counselorId
+counselorName
+
+date
+location
+
+status
+
+notes
 
 createdAt
 updatedAt
@@ -116,21 +157,91 @@ createdBy
 
 ---
 
-# 5. Collection : cases
+# 6. Collection : interviews
 
-Un dossier est créé uniquement après une décision positive.
+Les entretiens enregistrent le contenu des échanges avec la personne.
 
-Il est toujours lié à une demande.
+Avant l'ouverture d'un dossier :
 
-Principaux champs :
+* `caseId = null`
+
+Après ouverture du dossier :
+
+* `caseId` contient le dossier concerné.
 
 ```text
 id
+
+interviewNumber
+
+personId
+
+requestId
+
+caseId
+
+appointmentId
+
+counselorId
+counselorName
+
+date
+
+summary
+
+observations
+
+recommendations
+
+createdAt
+updatedAt
+createdBy
+```
+
+---
+
+# 7. Collection : contracts
+
+Le contrat formalise l'accord de prise en charge.
+
+Sa signature permet la création du dossier.
+
+```text
+id
+
+contractNumber
+
+personId
+
+requestId
+
+signedDate
+
+status
+
+attachmentId
+
+createdAt
+updatedAt
+createdBy
+```
+
+---
+
+# 8. Collection : cases
+
+Le dossier représente la prise en charge de la personne.
+
+```text
+id
+
 caseNumber
 
 personId
 
 requestId
+
+contractId
 
 status
 
@@ -140,7 +251,6 @@ primaryCounselorName
 openedAt
 
 closedAt
-
 closingReason
 
 createdAt
@@ -150,11 +260,9 @@ createdBy
 
 ---
 
-# 6. Collection : case_activities
+# 9. Collection : case_activities
 
 Toutes les activités réalisées pendant la prise en charge.
-
-Principaux champs :
 
 ```text
 id
@@ -163,11 +271,11 @@ caseId
 
 activityType
 
-date
+activityDate
 
 title
 
-notes
+description
 
 performedBy
 performedByName
@@ -176,13 +284,18 @@ createdAt
 updatedAt
 ```
 
+Les principaux types d'activités sont :
+
+* Entretien
+* Suivi
+* Note
+* Recommandation
+
 ---
 
-# 7. Collection : case_history
+# 10. Collection : case_history
 
 Historique technique du dossier.
-
-Principaux champs :
 
 ```text
 id
@@ -200,11 +313,9 @@ performedAt
 
 ---
 
-# 8. Collection : attachments
+# 11. Collection : attachments
 
-Documents associés aux personnes, demandes ou dossiers.
-
-Principaux champs :
+Documents associés aux personnes, demandes, contrats ou dossiers.
 
 ```text
 id
@@ -224,11 +335,7 @@ uploadedAt
 
 ---
 
-# 9. Collection : users
-
-Utilisateurs de l'application.
-
-Principaux champs :
+# 12. Collection : users
 
 ```text
 id
@@ -249,33 +356,53 @@ updatedAt
 
 ---
 
-# 10. Collection : counters
-
-Gestion des numéros séquentiels.
-
-Principaux champs :
+# 13. Collection : counters
 
 ```text
 people
 
 requests
+
+appointments
+
+interviews
+
+contracts
 
 cases
 ```
 
 ---
 
-## Relations
+# Relations
 
 ```text
 people
     1 ---- N requests
 
 people
+    1 ---- N appointments
+
+people
+    1 ---- N interviews
+
+people
     1 ---- N cases
 
 requests
+    1 ---- N appointments
+
+requests
+    1 ---- N interviews
+
+requests
+    1 ---- 0..1 contracts
+
+requests
     1 ---- 0..1 cases
+
+contracts
+    1 ---- 1 cases
 
 cases
     1 ---- N case_activities
@@ -283,12 +410,12 @@ cases
 cases
     1 ---- N case_history
 
-people / requests / cases
+people / requests / contracts / cases
     1 ---- N attachments
 ```
 
----
+## Deux remarques importantes
 
-Je m'arrête ici pour ce document afin de respecter notre méthode : **simple, figé et sans ajouter d'éléments non validés**.
+Je ne mettrais **pas** les entretiens dans `case_activities`. Je conserverais une collection `interviews` indépendante. Les entretiens sont suffisamment riches (résumé, observations, recommandations, pièces jointes éventuelles...) pour mériter leur propre collection. En revanche, lors d'un entretien réalisé dans le cadre d'un dossier, on peut ajouter automatiquement une entrée dans `case_history` indiquant qu'un entretien a eu lieu.
 
-La prochaine étape sera **ROADMAP.md**, puis nous commencerons immédiatement la restructuration du projet.
+Enfin, je renommerais simplement le champ `date` en `interviewDate` dans `interviews` et `appointmentDate` dans `appointments`. Cela rend le modèle plus explicite et évite toute ambiguïté lorsqu'on manipule plusieurs dates dans le code.

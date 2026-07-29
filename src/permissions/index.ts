@@ -9,6 +9,35 @@ export function isAdjoint(profile: UserProfile | null) {
     return profile?.role === 'adjoint';
 }
 
+export function canConfirmAppointment(
+  profile: UserProfile | null,
+  assignedCounselorId: string
+) {
+  if (!profile) {
+    return false;
+  }
+
+  const isAssignedUser =
+    profile.uid === assignedCounselorId;
+
+  return (
+    isAssignedUser ||
+    isSecretaire(profile) ||
+    isResponsable(profile) ||
+    isAdjoint(profile)
+  );
+}
+
+export function canActAsCounselor(
+  profile: UserProfile | null
+) {
+  return (
+    isResponsable(profile) ||
+    isAdjoint(profile) ||
+    isConseiller(profile)
+  );
+}
+
 export function isSecretaire(profile: UserProfile | null) {
     return profile?.role === 'secretaire';
 }

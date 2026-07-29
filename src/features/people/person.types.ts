@@ -1,4 +1,3 @@
-//src/types/person.types.ts
 export type Gender = 'male' | 'female';
 
 export type ChurchStatus =
@@ -41,3 +40,27 @@ export interface Person {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+export type PersonFormValues = Pick<
+  Person,
+  | 'fullName'
+  | 'gender'
+  | 'phone'
+  | 'email'
+  | 'address'
+  | 'churchStatus'
+  | 'origin'
+  | 'contactChannel'
+>;
+
+export type PersonFormState = Omit<
+  PersonFormValues,
+  'gender' | 'churchStatus' | 'origin' | 'contactChannel'
+> & {
+  gender?: Gender;
+  churchStatus?: ChurchStatus;
+  origin?: PersonOrigin;
+  contactChannel?: ContactChannel;
+};
+
+export type PersonFormErrors = Partial<Record<keyof PersonFormState, string>>;

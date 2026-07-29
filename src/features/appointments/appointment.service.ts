@@ -15,6 +15,8 @@ import {
 import { db } from '@/config/firebase';
 import { getNextCounterValue } from '@/features/counters/counter.service';
 
+import { UserRole } from '@/features/users/user.types';
+
 import {
   Appointment,
   AppointmentStatus,
@@ -483,11 +485,29 @@ async function changeStatus(
   });
 }
 
-export function confirmAppointment(
+export async function confirmAppointment(
   appointmentId: string,
   userId: string,
-  userName: string
+  userName: string,
+  userRole?: UserRole
 ): Promise<void> {
+  const { appointment } =
+    await getExistingAppointment(appointmentId);
+
+  const isAssignedUser =
+    appointment.counselorId === userId;
+
+  const isAuthorizedRole =
+    userRole === 'responsable' ||
+    userRole === 'adjoint' ||
+    userRole === 'secretaire';
+
+  if (!isAssignedUser && !isAuthorizedRole) {
+    throw new Error(
+      'APPOINTMENT_CONFIRMATION_NOT_ALLOWED'
+    );
+  }
+
   return changeStatus(
     appointmentId,
     ['scheduled'],

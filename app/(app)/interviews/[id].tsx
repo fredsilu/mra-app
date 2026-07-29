@@ -13,6 +13,7 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppInput } from '@/components/ui/AppInput';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDecisionByInterviewId } from '@/features/decisions/decision.service';
 import {
   completeInterview,
   getInterview,
@@ -33,6 +34,7 @@ export default function InterviewDetailsScreen() {
   const [recommendations, setRecommendations] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [decisionId, setDecisionId] = useState<string | null>(null);
 
   const loadInterview = useCallback(async () => {
     if (!id) {
@@ -54,6 +56,13 @@ export default function InterviewDetailsScreen() {
       setSummary(result.summary || '');
       setObservations(result.observations || '');
       setRecommendations(result.recommendations || '');
+
+      if (result.status === 'completed') {
+        const decision = await getDecisionByInterviewId(result.id);
+        setDecisionId(decision?.id ?? null);
+      } else {
+        setDecisionId(null);
+      }
     } catch (error) {
       console.error(error);
       Alert.alert('Erreur', 'Impossible de charger l’entretien.');
@@ -212,6 +221,24 @@ export default function InterviewDetailsScreen() {
                 onPress={finish}
               />
             </>
+          ) : null}
+
+          {completed ? (
+            <AppButton
+              title={decisionId ? 'Voir la décision' : 'Prendre une décision'}
+              disabled={isSaving}
+              onPress={() =>
+                decisionId
+                  ? router.push({
+                      pathname: '/decisions/[id]',
+                      params: { id: decisionId },
+                    })
+                  : router.push({
+                      pathname: '/decisions/form',
+                      params: { interviewId: interview.id },
+                    })
+              }
+            />
           ) : null}
 
           <AppButton
