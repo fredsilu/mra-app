@@ -99,7 +99,7 @@ export function AppointmentActions({
                     title={
                         interviewId
                             ? 'Voir l’entretien'
-                            : 'Démarrer l’entretien'
+                            : 'Créer l’entretien'
                     }
                     disabled={isSaving}
                     onPress={openInterview}

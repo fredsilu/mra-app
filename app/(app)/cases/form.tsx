@@ -1,14 +1,17 @@
-// app/case-form.tsx
+// app/(app)/cases/form.tsx
 
-import { router } from 'expo-router';
 import {
+  router,
+  useLocalSearchParams,
+} from 'expo-router';
+import {
+  useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
-
 import {
+  ActivityIndicator,
   Alert,
   SafeAreaView,
   ScrollView,
@@ -17,128 +20,122 @@ import {
 } from 'react-native';
 
 import { AppButton } from '@/components/ui/AppButton';
-import { AppInput } from '@/components/ui/AppInput';
-import { AppSelect } from '@/components/ui/AppSelect';
-
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-
-import { createCase } from '@/features/cases/case.service';
-import { getPeople } from '@/features/people/person.service';
-
 import {
-  CASE_PRIORITY_OPTIONS,
-  CasePriority,
-} from '@/features/cases/case.types';
-
-import { Person } from '@/features/people/person.types';
+  createCase,
+  getCaseByContractId,
+} from '@/features/cases/case.service';
+import { getContract } from '@/features/contracts/contract.service';
+import type { Contract } from '@/features/contracts/contract.types';
 
 function getCreationErrorMessage(
   error: unknown
 ): string {
   if (!(error instanceof Error)) {
-    return (
-      "Impossible d'enregistrer le dossier."
-    );
+    return "Impossible d'ouvrir le dossier.";
   }
 
   switch (error.message) {
-    case 'PERSON_REQUIRED':
-      return 'Sélectionnez une personne.';
-
-    case 'REQUEST_TITLE_REQUIRED':
-      return 'Le motif principal est obligatoire.';
-
-    case 'REQUEST_DESCRIPTION_REQUIRED':
-      return 'La description de la demande est obligatoire.';
-
-    case 'CREATED_BY_REQUIRED':
-      return (
-        'Votre profil utilisateur est introuvable.'
-      );
-
+    case 'CONTRACT_ID_REQUIRED':
+      return 'Le contrat est obligatoire.';
+    case 'CONTRACT_NOT_FOUND':
+      return 'Le contrat est introuvable.';
+    case 'CASE_ALREADY_EXISTS':
+      return 'Un dossier a déjà été ouvert pour ce contrat.';
+    case 'PERSON_ALREADY_HAS_OPEN_CASE':
+      return 'Cette personne possède déjà un dossier en cours.';
+    case 'INTERVIEW_NOT_FOUND':
+      return "L'entretien lié au contrat est introuvable.";
+    case 'REQUEST_NOT_FOUND':
+      return 'La demande liée au contrat est introuvable.';
+    case 'USER_ID_REQUIRED':
+      return 'Votre profil utilisateur est introuvable.';
     default:
-      return (
-        "Impossible d'enregistrer le dossier."
-      );
+      return "Impossible d'ouvrir le dossier.";
   }
 }
 
 export default function CaseFormScreen() {
+  const { contractId } = useLocalSearchParams<{
+    contractId?: string;
+  }>();
   const { profile } = useAuth();
 
-  const [people, setPeople] = useState<
-    Person[]
-  >([]);
-
-  const [personId, setPersonId] =
-    useState('');
-
-  const [priority, setPriority] =
-    useState<CasePriority>('normal');
-
-  const [requestTitle, setRequestTitle] =
-    useState('');
-
-  const [
-    requestDescription,
-    setRequestDescription,
-  ] = useState('');
-
-  const [notes, setNotes] =
-    useState('');
-
+  const [contract, setContract] =
+    useState<Contract | null>(null);
   const [isLoading, setIsLoading] =
     useState(true);
-
   const [isSaving, setIsSaving] =
     useState(false);
 
-  const isSubmittingRef =
-    useRef(false);
+  const isSubmittingRef = useRef(false);
 
-  useEffect(() => {
-    async function loadPeople() {
-      try {
-        const list = await getPeople();
+  const loadContract = useCallback(async () => {
+    const normalizedContractId =
+      contractId?.trim();
 
-        const activePeople = list.filter(
-          (person) => !person.isArchived
-        );
-
-        setPeople(activePeople);
-      } catch (error) {
-        console.error(
-          'Erreur lors du chargement des personnes :',
-          error
-        );
-
-        Alert.alert(
-          'Erreur',
-          'Impossible de charger les personnes.'
-        );
-      } finally {
-        setIsLoading(false);
-      }
+    if (!normalizedContractId) {
+      Alert.alert(
+        'Erreur',
+        "Le contrat signé n'a pas été indiqué."
+      );
+      router.back();
+      return;
     }
 
-    loadPeople();
-  }, []);
+    try {
+      setIsLoading(true);
 
-  const peopleOptions = useMemo(
-    () =>
-      people.map((person) => ({
-        label: person.mraNumber
-          ? `${person.mraNumber} - ${person.fullName}`
-          : person.fullName,
+      const [loadedContract, existingCase] =
+        await Promise.all([
+          getContract(normalizedContractId),
+          getCaseByContractId(normalizedContractId),
+        ]);
 
-        value: person.id,
-      })),
-    [people]
-  );
+      if (!loadedContract) {
+        Alert.alert(
+          'Erreur',
+          'Le contrat est introuvable.'
+        );
+        router.back();
+        return;
+      }
+
+      if (existingCase) {
+        router.replace({
+          pathname: '/cases/[id]',
+          params: { id: existingCase.id },
+        });
+        return;
+      }
+
+      setContract(loadedContract);
+    } catch (error) {
+      console.error(
+        'Erreur lors du chargement du contrat :',
+        error
+      );
+
+      Alert.alert(
+        'Erreur',
+        'Impossible de préparer l’ouverture du dossier.'
+      );
+      router.back();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [contractId]);
+
+  useEffect(() => {
+    void loadContract();
+  }, [loadContract]);
 
   async function handleSave() {
-    if (isSubmittingRef.current) {
+    if (
+      isSubmittingRef.current ||
+      !contract
+    ) {
       return;
     }
 
@@ -147,55 +144,6 @@ export default function CaseFormScreen() {
         'Erreur',
         'Votre profil utilisateur est introuvable.'
       );
-
-      return;
-    }
-
-    if (!personId) {
-      Alert.alert(
-        'Validation',
-        'Sélectionnez une personne.'
-      );
-
-      return;
-    }
-
-    const normalizedTitle =
-      requestTitle.trim();
-
-    if (!normalizedTitle) {
-      Alert.alert(
-        'Validation',
-        'Le motif principal est obligatoire.'
-      );
-
-      return;
-    }
-
-    const normalizedDescription =
-      requestDescription.trim();
-
-    if (!normalizedDescription) {
-      Alert.alert(
-        'Validation',
-        'La description de la demande est obligatoire.'
-      );
-
-      return;
-    }
-
-    const selectedPerson =
-      people.find(
-        (person) =>
-          person.id === personId
-      );
-
-    if (!selectedPerson) {
-      Alert.alert(
-        'Erreur',
-        'La personne sélectionnée est introuvable.'
-      );
-
       return;
     }
 
@@ -203,28 +151,28 @@ export default function CaseFormScreen() {
     setIsSaving(true);
 
     try {
-      await createCase({
-        personId: selectedPerson.id,
-
-        priority,
-
-        requestTitle:
-          normalizedTitle,
-
-        requestDescription:
-          normalizedDescription,
-
-        notes: notes.trim(),
-
+      const caseId = await createCase({
+        contractId: contract.id,
+        interviewId: contract.interviewId,
+        appointmentId: contract.appointmentId,
+        requestId: contract.requestId,
+        personId: contract.personId,
+        personName: contract.personName,
+        counselorId: contract.counselorId,
+        counselorName: contract.counselorName,
         createdBy: profile.uid,
+        createdByName: profile.displayName,
       });
 
-      router.replace('/cases');
-
       Alert.alert(
-        'Dossier créé',
-        'Le dossier de relation d’aide a été ouvert avec succès.'
+        'Dossier ouvert',
+        'Le dossier d’accompagnement a été créé avec succès.'
       );
+
+      router.replace({
+        pathname: '/cases/[id]',
+        params: { id: caseId },
+      });
     } catch (error) {
       console.error(
         'Erreur lors de la création du dossier :',
@@ -232,7 +180,7 @@ export default function CaseFormScreen() {
       );
 
       Alert.alert(
-        'Création impossible',
+        'Ouverture impossible',
         getCreationErrorMessage(error)
       );
 
@@ -251,9 +199,13 @@ export default function CaseFormScreen() {
           alignItems: 'center',
         }}
       >
-        <Text>Chargement...</Text>
+        <ActivityIndicator />
       </SafeAreaView>
     );
+  }
+
+  if (!contract) {
+    return null;
   }
 
   return (
@@ -268,7 +220,6 @@ export default function CaseFormScreen() {
           padding: 16,
           paddingBottom: 40,
         }}
-        keyboardShouldPersistTaps="handled"
       >
         <Text
           style={{
@@ -278,7 +229,7 @@ export default function CaseFormScreen() {
             marginBottom: 6,
           }}
         >
-          Nouveau dossier
+          Ouvrir le dossier
         </Text>
 
         <Text
@@ -288,112 +239,45 @@ export default function CaseFormScreen() {
             marginBottom: 20,
           }}
         >
-          Ouvrez un nouveau dossier de relation
-          d’aide pour une personne existante.
+          Le contrat papier a été signé. Confirmez
+          maintenant l’ouverture du dossier
+          d’accompagnement.
         </Text>
 
-        <View style={{ gap: 16 }}>
-          <AppSelect
-            label="Personne"
-            placeholder="Sélectionner une personne"
-            value={personId}
-            options={peopleOptions}
-            onValueChange={setPersonId}
-            required
-          />
+        <View
+          style={{
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: 16,
+          }}
+        >
+          <Text
+            style={{
+              fontWeight: '700',
+              fontSize: 18,
+              marginBottom: 12,
+            }}
+          >
+            Informations
+          </Text>
 
-          <AppSelect
-            label="Priorité"
-            placeholder="Choisir la priorité"
-            value={priority}
-            options={CASE_PRIORITY_OPTIONS}
-            onValueChange={setPriority}
-            required
-          />
+          <Text>
+            Contrat : {contract.contractNumber}
+          </Text>
+          <Text style={{ marginTop: 8 }}>
+            Personne : {contract.personName}
+          </Text>
+          <Text style={{ marginTop: 8 }}>
+            Conseiller : {contract.counselorName}
+          </Text>
+        </View>
 
-          <View style={{ gap: 6 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '600',
-                color: COLORS.text,
-              }}
-            >
-              Motif principal *
-            </Text>
-
-            <AppInput
-              placeholder="Ex. Difficultés familiales"
-              value={requestTitle}
-              onChangeText={setRequestTitle}
-              editable={!isSaving}
-            />
-          </View>
-
-          <View style={{ gap: 6 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '600',
-                color: COLORS.text,
-              }}
-            >
-              Demande formulée *
-            </Text>
-
-            <AppInput
-              placeholder="Décrivez la demande exprimée par la personne"
-              value={requestDescription}
-              onChangeText={
-                setRequestDescription
-              }
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-              editable={!isSaving}
-            />
-          </View>
-
-          <View style={{ gap: 6 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '600',
-                color: COLORS.text,
-              }}
-            >
-              Notes complémentaires
-            </Text>
-
-            <AppInput
-              placeholder="Informations complémentaires utiles"
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              editable={!isSaving}
-            />
-          </View>
-
-          {people.length === 0 ? (
-            <Text
-              style={{
-                color: '#B45309',
-                lineHeight: 20,
-              }}
-            >
-              Aucune personne active n’est
-              disponible. Créez d’abord une fiche
-              personne.
-            </Text>
-          ) : null}
-
+        <View style={{ marginTop: 24, gap: 12 }}>
           <AppButton
             title={
               isSaving
                 ? 'Ouverture du dossier...'
-                : 'Ouvrir le dossier'
+                : 'Confirmer l’ouverture du dossier'
             }
             onPress={handleSave}
           />

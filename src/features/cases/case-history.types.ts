@@ -1,24 +1,21 @@
-// src/types/case-history.types.ts
+// src/features/cases/case-history.types.ts
 
-import { Timestamp } from 'firebase/firestore';
+import type { Timestamp } from 'firebase/firestore';
 
 export type CaseHistoryAction =
   | 'CASE_CREATED'
-  | 'COUNSELOR_ASSIGNED'
   | 'COUNSELOR_CHANGED'
-  | 'STATUS_CHANGED'
-  | 'CASE_CLOSED'
-  | 'CASE_CANCELLED';
+  | 'CASE_SUSPENDED'
+  | 'CASE_REACTIVATED'
+  | 'CASE_CLOSED';
 
 export interface CaseHistoryEntry {
   id: string;
-
   caseId: string;
-
   action: CaseHistoryAction;
   description: string;
-
   performedBy: string;
+  performedByName?: string;
   performedAt: Timestamp;
 }
 
@@ -27,9 +24,8 @@ export const CASE_HISTORY_ACTION_LABELS: Record<
   string
 > = {
   CASE_CREATED: 'Dossier créé',
-  COUNSELOR_ASSIGNED: 'Conseiller affecté',
   COUNSELOR_CHANGED: 'Conseiller remplacé',
-  STATUS_CHANGED: 'Statut modifié',
+  CASE_SUSPENDED: 'Dossier suspendu',
+  CASE_REACTIVATED: 'Dossier réactivé',
   CASE_CLOSED: 'Dossier clôturé',
-  CASE_CANCELLED: 'Dossier annulé',
 };

@@ -111,6 +111,10 @@ service cloud.firestore {
       allow read, create: if isActiveUser();
       allow update, delete: if false;
     }
+    match /case_activities/{activityId} {
+  allow read, create, update: if isActiveUser();
+  allow delete: if false;
+}
 
     match /counters/{counterId} {
       allow read: if isActiveUser();

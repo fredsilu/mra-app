@@ -1,6 +1,14 @@
-//app/(app)/cases/[id].tsx
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+// app/(app)/cases/[id].tsx
+
+import {
+  router,
+  useLocalSearchParams,
+} from 'expo-router';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,80 +20,65 @@ import {
 
 import { AppButton } from '@/components/ui/AppButton';
 import { COLORS } from '@/constants/theme';
-
 import { getCase } from '@/features/cases/case.service';
-import { getPersonById } from '@/features/people/person.service';
-import { getUserById } from '@/features/users/user.service';
-
 import {
-  CASE_PRIORITY_LABELS,
   CASE_STATUS_LABELS,
-  HelpCase,
+  type Case,
 } from '@/features/cases/case.types';
 
-import { Person } from '@/features/people/person.types';
-import { UserProfile } from '@/features/users/user.types';
+function formatDate(
+  value?: Case['openedAt']
+): string {
+  if (!value) {
+    return '-';
+  }
+
+  try {
+    return value
+      .toDate()
+      .toLocaleDateString('fr-FR');
+  } catch {
+    return '-';
+  }
+}
 
 export default function CaseDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{
+    id?: string;
+  }>();
 
   const [helpCase, setHelpCase] =
-    useState<HelpCase | null>(null);
-
-  const [person, setPerson] =
-    useState<Person | null>(null);
-
-  const [counselor, setCounselor] =
-    useState<UserProfile | null>(null);
-
+    useState<Case | null>(null);
   const [loading, setLoading] =
     useState(true);
 
-  useEffect(() => {
-    loadCase();
-  }, []);
+  const loadCase = useCallback(async () => {
+    const caseId = id?.trim();
 
-  async function loadCase() {
+    if (!caseId) {
+      Alert.alert(
+        'Erreur',
+        'Identifiant du dossier manquant.'
+      );
+      router.back();
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const caseId = String(id);
-
-      const loadedCase =
-        await getCase(caseId);
+      const loadedCase = await getCase(caseId);
 
       if (!loadedCase) {
         Alert.alert(
           'Erreur',
           'Dossier introuvable.'
         );
-
         router.back();
-
         return;
       }
 
       setHelpCase(loadedCase);
-
-      const loadedPerson =
-        await getPersonById(
-          loadedCase.personId
-        );
-
-      setPerson(loadedPerson);
-
-      if (
-        loadedCase.assignedCounselorId
-      ) {
-        const loadedCounselor =
-          await getUserById(
-            loadedCase.assignedCounselorId
-          );
-
-        setCounselor(
-          loadedCounselor
-        );
-      }
     } catch (error) {
       console.error(error);
 
@@ -93,12 +86,15 @@ export default function CaseDetailScreen() {
         'Erreur',
         'Impossible de charger le dossier.'
       );
-
       router.back();
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    void loadCase();
+  }, [loadCase]);
 
   if (loading) {
     return (
@@ -148,7 +144,7 @@ export default function CaseDetailScreen() {
             color: COLORS.muted,
           }}
         >
-          Fiche du dossier
+          Fiche du dossier d’accompagnement
         </Text>
 
         <View
@@ -166,23 +162,12 @@ export default function CaseDetailScreen() {
               marginBottom: 12,
             }}
           >
-            Personne
+            Personne accompagnée
           </Text>
 
-          <Text>
-            Nom : {person?.fullName ?? '-'}
-          </Text>
-
-          <Text>
-            Téléphone : {person?.phone ?? '-'}
-          </Text>
-
-          <Text>
-            Email : {person?.email ?? '-'}
-          </Text>
-
-          <Text>
-            N° MRA : {person?.mraNumber ?? '-'}
+          <Text>Nom : {helpCase.personName}</Text>
+          <Text style={{ marginTop: 6 }}>
+            Identifiant : {helpCase.personId}
           </Text>
         </View>
 
@@ -205,70 +190,35 @@ export default function CaseDetailScreen() {
           </Text>
 
           <Text>
-            Statut :{' '}
-            {
-              CASE_STATUS_LABELS[
-                helpCase.status
-              ]
-            }
+            Statut : {CASE_STATUS_LABELS[helpCase.status]}
           </Text>
 
-          <Text>
-            Priorité :{' '}
-            {
-              CASE_PRIORITY_LABELS[
-                helpCase.priority
-              ]
-            }
+          <Text style={{ marginTop: 6 }}>
+            Conseiller : {helpCase.counselorName}
           </Text>
 
-          <Text>
-            Conseiller :{' '}
-            {counselor?.displayName ??
-              'Non affecté'}
+          <Text style={{ marginTop: 6 }}>
+            Ouvert le : {formatDate(helpCase.openedAt)}
           </Text>
 
-          <Text
-            style={{
-              marginTop: 10,
-              fontWeight: '600',
-            }}
-          >
-            Motif
-          </Text>
-
-          <Text>
-            {helpCase.requestTitle}
-          </Text>
-
-          <Text
-            style={{
-              marginTop: 10,
-              fontWeight: '600',
-            }}
-          >
-            Description
-          </Text>
-
-          <Text>
-            {
-              helpCase.requestDescription
-            }
-          </Text>
-
-          {helpCase.notes ? (
+          {helpCase.status === 'suspended' ? (
             <>
-              <Text
-                style={{
-                  marginTop: 10,
-                  fontWeight: '600',
-                }}
-              >
-                Notes
+              <Text style={{ marginTop: 6 }}>
+                Suspendu le : {formatDate(helpCase.suspendedAt)}
               </Text>
+              <Text style={{ marginTop: 6 }}>
+                Motif : {helpCase.suspensionReason ?? '-'}
+              </Text>
+            </>
+          ) : null}
 
-              <Text>
-                {helpCase.notes}
+          {helpCase.status === 'closed' ? (
+            <>
+              <Text style={{ marginTop: 6 }}>
+                Clôturé le : {formatDate(helpCase.closedAt)}
+              </Text>
+              <Text style={{ marginTop: 6 }}>
+                Motif : {helpCase.closureReason ?? '-'}
               </Text>
             </>
           ) : null}
@@ -276,14 +226,67 @@ export default function CaseDetailScreen() {
 
         <View
           style={{
+            marginTop: 20,
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: 16,
+          }}
+        >
+          <Text
+            style={{
+              fontWeight: '700',
+              fontSize: 18,
+              marginBottom: 12,
+            }}
+          >
+            Origine du dossier
+          </Text>
+
+          <Text>Contrat : {helpCase.contractId}</Text>
+          <Text style={{ marginTop: 6 }}>
+            Entretien : {helpCase.interviewId}
+          </Text>
+          <Text style={{ marginTop: 6 }}>
+            Rendez-vous : {helpCase.appointmentId}
+          </Text>
+          <Text style={{ marginTop: 6 }}>
+            Demande : {helpCase.requestId}
+          </Text>
+        </View>
+
+        <View
+          style={{
             marginTop: 30,
+            gap: 12,
           }}
         >
           <AppButton
-            title="Retour"
+            title="Voir les activités"
             onPress={() =>
-              router.back()
+              router.push({
+                pathname: '/(app)/case-activities',
+                params: {
+                  caseId: helpCase.id,
+                },
+              })
             }
+          />
+
+          <AppButton
+            title="Voir la chronologie"
+            onPress={() =>
+              router.push({
+                pathname: '/(app)/cases/timeline',
+                params: {
+                  caseId: helpCase.id,
+                },
+              })
+            }
+          />
+
+          <AppButton
+            title="Retour"
+            onPress={() => router.back()}
           />
         </View>
       </ScrollView>

@@ -1,4 +1,4 @@
-// src/services/case.service.ts
+// src/features/cases/case.service.ts
 
 import {
   Timestamp,
@@ -6,35 +6,75 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 
 import { db } from '@/config/firebase';
+import { getNextCounterValue } from '@/features/counters/counter.service';
 
-import {
-  AssignCaseCounselorData,
-  CasePriority,
+import type {
+  Case,
   CaseStatus,
-  ChangeCaseStatusData,
-  CreateHelpCaseData,
-  HelpCase,
-  UpdateHelpCaseData,
-  CASE_STATUS_LABELS,
-} from '@/features/cases/case.types';
+  ChangeCaseCounselorData,
+  CloseCaseData,
+  CreateCaseData,
+  ReactivateCaseData,
+  SuspendCaseData,
+} from './case.types';
 
-import {
-  CaseHistoryAction,
-} from '@/features/cases/case-history.types';
+const COLLECTION_NAME = 'cases';
+const CONTRACTS_COLLECTION_NAME = 'contracts';
+const INTERVIEWS_COLLECTION_NAME = 'interviews';
+const REQUESTS_COLLECTION_NAME = 'requests';
 
-const CASES_COLLECTION_NAME = 'cases';
+const CASE_STATUSES: CaseStatus[] = [
+  'active',
+  'suspended',
+  'closed',
+];
 
-const HISTORY_COLLECTION_NAME =
-  'case_history';
+/**
+ * Valide et nettoie une chaîne obligatoire.
+ */
+function required(
+  value: string,
+  errorCode: string
+): string {
+  const normalizedValue = value.trim();
 
-function readTimestamp(
+  if (!normalizedValue) {
+    throw new Error(errorCode);
+  }
+
+  return normalizedValue;
+}
+
+/**
+ * Retourne une chaîne nettoyée ou undefined.
+ */
+function optionalText(
+  value: unknown
+): string | undefined {
+  if (
+    typeof value === 'string' &&
+    value.trim()
+  ) {
+    return value.trim();
+  }
+
+  return undefined;
+}
+
+/**
+ * Retourne un Timestamp Firestore valide.
+ */
+function timestamp(
   value: unknown
 ): Timestamp | undefined {
   return value instanceof Timestamp
@@ -42,264 +82,154 @@ function readTimestamp(
     : undefined;
 }
 
-function readString(
+/**
+ * Retourne un statut valide.
+ */
+function caseStatus(
   value: unknown
-): string | undefined {
-  return typeof value === 'string'
-    ? value
-    : undefined;
+): CaseStatus {
+  return CASE_STATUSES.includes(
+    value as CaseStatus
+  )
+    ? (value as CaseStatus)
+    : 'active';
 }
 
-function mapHelpCase(
+/**
+ * Convertit un document Firestore en Case.
+ */
+function mapCase(
   id: string,
   data: Record<string, unknown>
-): HelpCase {
-  const createdAt =
-    readTimestamp(data.createdAt) ??
-    Timestamp.now();
-
+): Case {
   return {
     id,
 
     caseNumber:
-      readString(data.caseNumber) ?? '',
+      typeof data.caseNumber === 'string'
+        ? data.caseNumber
+        : '',
+
+    contractId:
+      typeof data.contractId === 'string'
+        ? data.contractId
+        : '',
+
+    interviewId:
+      typeof data.interviewId === 'string'
+        ? data.interviewId
+        : '',
+
+    appointmentId:
+      typeof data.appointmentId === 'string'
+        ? data.appointmentId
+        : '',
+
+    requestId:
+      typeof data.requestId === 'string'
+        ? data.requestId
+        : '',
 
     personId:
-      readString(data.personId) ?? '',
+      typeof data.personId === 'string'
+        ? data.personId
+        : '',
 
-    assignedCounselorId:
-      readString(
-        data.assignedCounselorId
-      ),
+    personName:
+      typeof data.personName === 'string'
+        ? data.personName
+        : '',
 
-    status:
-      (data.status as CaseStatus) ??
-      'new',
+    counselorId:
+      typeof data.counselorId === 'string'
+        ? data.counselorId
+        : '',
 
-    priority:
-      (data.priority as CasePriority) ??
-      'normal',
+    counselorName:
+      typeof data.counselorName === 'string'
+        ? data.counselorName
+        : '',
 
-    requestTitle:
-      readString(data.requestTitle) ?? '',
-
-    requestDescription:
-      readString(
-        data.requestDescription
-      ) ?? '',
-
-    notes:
-      readString(data.notes),
+    status: caseStatus(data.status),
 
     openedAt:
-      readTimestamp(data.openedAt) ??
-      createdAt,
+      timestamp(data.openedAt) ??
+      Timestamp.now(),
 
-    openedBy:
-      readString(data.openedBy) ?? '',
+    suspendedAt:
+      timestamp(data.suspendedAt),
 
-    createdAt,
-
-    createdBy:
-      readString(data.createdBy) ?? '',
-
-    updatedAt:
-      readTimestamp(data.updatedAt),
-
-    updatedBy:
-      readString(data.updatedBy),
-
-    assignedAt:
-      readTimestamp(data.assignedAt),
+    suspensionReason:
+      optionalText(data.suspensionReason),
 
     closedAt:
-      readTimestamp(data.closedAt),
+      timestamp(data.closedAt),
 
-    closedBy:
-      readString(data.closedBy),
+    closureReason:
+      optionalText(data.closureReason),
 
-    closingReason:
-      readString(data.closingReason),
+    createdAt:
+      timestamp(data.createdAt) ??
+      Timestamp.now(),
 
-    cancelledAt:
-      readTimestamp(data.cancelledAt),
+    createdBy:
+      typeof data.createdBy === 'string'
+        ? data.createdBy
+        : '',
 
-    cancelledBy:
-      readString(data.cancelledBy),
+    createdByName:
+      optionalText(data.createdByName),
 
-    cancellationReason:
-      readString(
-        data.cancellationReason
-      ),
+    updatedAt:
+      timestamp(data.updatedAt),
+
+    updatedBy:
+      optionalText(data.updatedBy),
+
+    updatedByName:
+      optionalText(data.updatedByName),
   };
 }
 
-function buildCaseNumber(
-  documentId: string
-): string {
-  const year =
-    new Date().getFullYear();
-
-  const shortId = documentId
-    .replace(
-      /[^a-zA-Z0-9]/g,
-      ''
+/**
+ * Retourne tous les dossiers,
+ * du plus récent au plus ancien.
+ */
+export async function getCases(): Promise<
+  Case[]
+> {
+  const snapshot = await getDocs(
+    query(
+      collection(db, COLLECTION_NAME),
+      orderBy('createdAt', 'desc')
     )
-    .slice(0, 6)
-    .toUpperCase();
+  );
 
-  return `MRA-${year}-${shortId}`;
-}
-
-function createHistoryReference() {
-  return doc(
-    collection(
-      db,
-      HISTORY_COLLECTION_NAME
+  return snapshot.docs.map((item) =>
+    mapCase(
+      item.id,
+      item.data()
     )
   );
 }
 
-function buildHistoryData(
-  caseId: string,
-  action: CaseHistoryAction,
-  description: string,
-  performedBy: string
-) {
-  return {
-    caseId,
-    action,
-    description,
-    performedBy,
-    performedAt: serverTimestamp(),
-  };
-}
-
-export async function createCase(
-  data: CreateHelpCaseData
-): Promise<string> {
-  const normalizedPersonId =
-    data.personId.trim();
-
-  const normalizedTitle =
-    data.requestTitle.trim();
-
-  const normalizedDescription =
-    data.requestDescription.trim();
-
-  const normalizedCreatedBy =
-    data.createdBy.trim();
-
-  if (!normalizedPersonId) {
-    throw new Error(
-      'PERSON_REQUIRED'
-    );
-  }
-
-  if (!normalizedTitle) {
-    throw new Error(
-      'REQUEST_TITLE_REQUIRED'
-    );
-  }
-
-  if (!normalizedDescription) {
-    throw new Error(
-      'REQUEST_DESCRIPTION_REQUIRED'
-    );
-  }
-
-  if (!normalizedCreatedBy) {
-    throw new Error(
-      'CREATED_BY_REQUIRED'
-    );
-  }
-
-  const caseReference = doc(
-    collection(
-      db,
-      CASES_COLLECTION_NAME
-    )
-  );
-
-  const historyReference =
-    createHistoryReference();
-
-  const caseNumber =
-    buildCaseNumber(
-      caseReference.id
-    );
-
-  const batch = writeBatch(db);
-
-  batch.set(
-    caseReference,
-    {
-      caseNumber,
-
-      personId:
-        normalizedPersonId,
-
-      status: 'new',
-      priority: data.priority,
-
-      requestTitle:
-        normalizedTitle,
-
-      requestDescription:
-        normalizedDescription,
-
-      notes:
-        data.notes?.trim() ?? '',
-
-      openedAt:
-        serverTimestamp(),
-
-      openedBy:
-        normalizedCreatedBy,
-
-      createdAt:
-        serverTimestamp(),
-
-      createdBy:
-        normalizedCreatedBy,
-
-      updatedAt:
-        serverTimestamp(),
-
-      updatedBy:
-        normalizedCreatedBy,
-    }
-  );
-
-  batch.set(
-    historyReference,
-    buildHistoryData(
-      caseReference.id,
-      'CASE_CREATED',
-      `Création du dossier ${caseNumber}.`,
-      normalizedCreatedBy
-    )
-  );
-
-  await batch.commit();
-
-  return caseReference.id;
-}
-
+/**
+ * Retourne un dossier par son identifiant.
+ */
 export async function getCase(
   id: string
-): Promise<HelpCase | null> {
-  const normalizedId = id.trim();
+): Promise<Case | null> {
+  const caseId = id.trim();
 
-  if (!normalizedId) {
+  if (!caseId) {
     return null;
   }
 
   const snapshot = await getDoc(
     doc(
       db,
-      CASES_COLLECTION_NAME,
-      normalizedId
+      COLLECTION_NAME,
+      caseId
     )
   );
 
@@ -307,385 +237,721 @@ export async function getCase(
     return null;
   }
 
-  return mapHelpCase(
+  return mapCase(
     snapshot.id,
     snapshot.data()
   );
 }
 
-export async function getCases(): Promise<
-  HelpCase[]
-> {
+/**
+ * Retourne tous les dossiers d’une personne.
+ */
+export async function getCasesByPersonId(
+  personId: string
+): Promise<Case[]> {
+  const normalizedPersonId =
+    personId.trim();
+
+  if (!normalizedPersonId) {
+    return [];
+  }
+
   const snapshot = await getDocs(
     query(
-      collection(
-        db,
-        CASES_COLLECTION_NAME
+      collection(db, COLLECTION_NAME),
+      where(
+        'personId',
+        '==',
+        normalizedPersonId
+      )
+    )
+  );
+
+  return snapshot.docs
+    .map((item) =>
+      mapCase(
+        item.id,
+        item.data()
+      )
+    )
+    .sort(
+      (firstCase, secondCase) =>
+        secondCase.createdAt.toMillis() -
+        firstCase.createdAt.toMillis()
+    );
+}
+
+/**
+ * Retourne le dossier en cours d’une personne.
+ *
+ * Les statuts active et suspended sont
+ * considérés comme des dossiers en cours.
+ */
+export async function getOpenCaseByPersonId(
+  personId: string
+): Promise<Case | null> {
+  const normalizedPersonId =
+    personId.trim();
+
+  if (!normalizedPersonId) {
+    return null;
+  }
+
+  const snapshot = await getDocs(
+    query(
+      collection(db, COLLECTION_NAME),
+      where(
+        'personId',
+        '==',
+        normalizedPersonId
       ),
-      orderBy(
-        'createdAt',
-        'desc'
-      )
+      where(
+        'status',
+        'in',
+        ['active', 'suspended']
+      ),
+      limit(1)
     )
   );
 
-  return snapshot.docs.map(
-    (documentSnapshot) =>
-      mapHelpCase(
-        documentSnapshot.id,
-        documentSnapshot.data()
-      )
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const item = snapshot.docs[0];
+
+  return mapCase(
+    item.id,
+    item.data()
   );
 }
 
-export async function updateCase(
+/**
+ * Retourne le dossier associé à un contrat.
+ */
+export async function getCaseByContractId(
+  contractId: string
+): Promise<Case | null> {
+  const normalizedContractId =
+    contractId.trim();
+
+  if (!normalizedContractId) {
+    return null;
+  }
+
+  const snapshot = await getDocs(
+    query(
+      collection(db, COLLECTION_NAME),
+      where(
+        'contractId',
+        '==',
+        normalizedContractId
+      ),
+      limit(1)
+    )
+  );
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const item = snapshot.docs[0];
+
+  return mapCase(
+    item.id,
+    item.data()
+  );
+}
+
+/**
+ * Ouvre un nouveau dossier d’accompagnement.
+ */
+export async function createCase(
+  data: CreateCaseData
+): Promise<string> {
+  const contractId = required(
+    data.contractId,
+    'CONTRACT_ID_REQUIRED'
+  );
+
+  const interviewId = required(
+    data.interviewId,
+    'INTERVIEW_ID_REQUIRED'
+  );
+
+  const appointmentId = required(
+    data.appointmentId,
+    'APPOINTMENT_ID_REQUIRED'
+  );
+
+  const requestId = required(
+    data.requestId,
+    'REQUEST_ID_REQUIRED'
+  );
+
+  const personId = required(
+    data.personId,
+    'PERSON_ID_REQUIRED'
+  );
+
+  const personName = required(
+    data.personName,
+    'PERSON_NAME_REQUIRED'
+  );
+
+  const counselorId = required(
+    data.counselorId,
+    'COUNSELOR_ID_REQUIRED'
+  );
+
+  const counselorName = required(
+    data.counselorName,
+    'COUNSELOR_NAME_REQUIRED'
+  );
+
+  const createdBy = required(
+    data.createdBy,
+    'USER_ID_REQUIRED'
+  );
+
+  /*
+   * Un contrat ne peut ouvrir
+   * qu’un seul dossier.
+   */
+  const existingByContract =
+    await getCaseByContractId(
+      contractId
+    );
+
+  if (existingByContract) {
+    throw new Error(
+      'CASE_ALREADY_EXISTS'
+    );
+  }
+
+  /*
+   * Une personne ne peut avoir
+   * qu’un seul dossier en cours.
+   */
+  const existingOpenCase =
+    await getOpenCaseByPersonId(
+      personId
+    );
+
+  if (existingOpenCase) {
+    throw new Error(
+      'PERSON_ALREADY_HAS_OPEN_CASE'
+    );
+  }
+
+  /*
+   * Vérification du contrat.
+   */
+  const contractRef = doc(
+    db,
+    CONTRACTS_COLLECTION_NAME,
+    contractId
+  );
+
+  const contractSnapshot =
+    await getDoc(contractRef);
+
+  if (!contractSnapshot.exists()) {
+    throw new Error(
+      'CONTRACT_NOT_FOUND'
+    );
+  }
+
+  const contract =
+    contractSnapshot.data();
+
+  /*
+   * Vérification de l’entretien.
+   */
+  const interviewRef = doc(
+    db,
+    INTERVIEWS_COLLECTION_NAME,
+    interviewId
+  );
+
+  const interviewSnapshot =
+    await getDoc(interviewRef);
+
+  if (!interviewSnapshot.exists()) {
+    throw new Error(
+      'INTERVIEW_NOT_FOUND'
+    );
+  }
+
+  const interview =
+    interviewSnapshot.data();
+
+  /*
+   * Vérification de la demande.
+   */
+  const requestRef = doc(
+    db,
+    REQUESTS_COLLECTION_NAME,
+    requestId
+  );
+
+  const requestSnapshot =
+    await getDoc(requestRef);
+
+  if (!requestSnapshot.exists()) {
+    throw new Error(
+      'REQUEST_NOT_FOUND'
+    );
+  }
+
+  const request =
+    requestSnapshot.data();
+
+  /*
+   * Vérification de la cohérence
+   * entre le contrat et le dossier.
+   */
+  if (
+    contract.interviewId !==
+    interviewId
+  ) {
+    throw new Error(
+      'CONTRACT_INTERVIEW_MISMATCH'
+    );
+  }
+
+  if (
+    contract.appointmentId !==
+    appointmentId
+  ) {
+    throw new Error(
+      'CONTRACT_APPOINTMENT_MISMATCH'
+    );
+  }
+
+  if (
+    contract.requestId !==
+    requestId
+  ) {
+    throw new Error(
+      'CONTRACT_REQUEST_MISMATCH'
+    );
+  }
+
+  if (
+    contract.personId !==
+    personId
+  ) {
+    throw new Error(
+      'CONTRACT_PERSON_MISMATCH'
+    );
+  }
+
+  if (
+    contract.counselorId !==
+    counselorId
+  ) {
+    throw new Error(
+      'CONTRACT_COUNSELOR_MISMATCH'
+    );
+  }
+
+  /*
+   * Vérification de la cohérence
+   * entre l’entretien et le dossier.
+   */
+  if (
+    interview.requestId !==
+    requestId
+  ) {
+    throw new Error(
+      'INTERVIEW_REQUEST_MISMATCH'
+    );
+  }
+
+  if (
+    interview.appointmentId !==
+    appointmentId
+  ) {
+    throw new Error(
+      'INTERVIEW_APPOINTMENT_MISMATCH'
+    );
+  }
+
+  if (
+    interview.personId !==
+    personId
+  ) {
+    throw new Error(
+      'INTERVIEW_PERSON_MISMATCH'
+    );
+  }
+
+  if (
+    interview.counselorId !==
+    counselorId
+  ) {
+    throw new Error(
+      'INTERVIEW_COUNSELOR_MISMATCH'
+    );
+  }
+
+  /*
+   * Vérification complémentaire
+   * de la demande.
+   */
+  if (
+    request.personId &&
+    request.personId !== personId
+  ) {
+    throw new Error(
+      'REQUEST_PERSON_MISMATCH'
+    );
+  }
+
+  /*
+   * Génération du numéro de dossier.
+   *
+   * Exemple :
+   * MRA-D-000001
+   */
+  const nextNumber =
+    await getNextCounterValue(
+      'cases'
+    );
+
+  const caseNumber =
+    `MRA-D-${String(nextNumber).padStart(
+      6,
+      '0'
+    )}`;
+
+  const caseRef = doc(
+    collection(db, COLLECTION_NAME)
+  );
+
+  const batch = writeBatch(db);
+
+  batch.set(caseRef, {
+    caseNumber,
+
+    contractId,
+    interviewId,
+    appointmentId,
+    requestId,
+
+    personId,
+    personName,
+
+    counselorId,
+    counselorName,
+
+    status: 'active',
+
+    openedAt: serverTimestamp(),
+
+    suspendedAt: null,
+    suspensionReason: null,
+
+    closedAt: null,
+    closureReason: null,
+
+    createdAt: serverTimestamp(),
+    createdBy,
+
+    createdByName:
+      data.createdByName?.trim() ||
+      null,
+
+    updatedAt: serverTimestamp(),
+    updatedBy: createdBy,
+
+    updatedByName:
+      data.createdByName?.trim() ||
+      null,
+  });
+
+  /*
+   * Le contrat conserve l’identifiant
+   * du dossier ouvert.
+   */
+  batch.update(contractRef, {
+    caseId: caseRef.id,
+    updatedAt: serverTimestamp(),
+  });
+
+  /*
+   * L’entretien conserve également
+   * l’identifiant du dossier.
+   */
+  batch.update(interviewRef, {
+    caseId: caseRef.id,
+    updatedAt: serverTimestamp(),
+  });
+
+  /*
+   * La demande conserve également
+   * l’identifiant du dossier.
+   */
+  batch.update(requestRef, {
+    caseId: caseRef.id,
+    updatedAt: serverTimestamp(),
+  });
+
+  await batch.commit();
+
+  return caseRef.id;
+}
+
+/**
+ * Change le conseiller responsable.
+ */
+export async function changeCaseCounselor(
   id: string,
-  data: UpdateHelpCaseData
+  data: ChangeCaseCounselorData
 ): Promise<void> {
-  const normalizedId = id.trim();
-
-  const normalizedUpdatedBy =
-    data.updatedBy.trim();
-
-  if (!normalizedId) {
-    throw new Error(
-      'CASE_ID_REQUIRED'
-    );
-  }
-
-  if (!normalizedUpdatedBy) {
-    throw new Error(
-      'UPDATED_BY_REQUIRED'
-    );
-  }
-
-  const updateData: Record<
-    string,
-    unknown
-  > = {
-    updatedAt:
-      serverTimestamp(),
-
-    updatedBy:
-      normalizedUpdatedBy,
-  };
-
-  if (data.priority !== undefined) {
-    updateData.priority =
-      data.priority;
-  }
-
-  if (
-    data.requestTitle !== undefined
-  ) {
-    const normalizedTitle =
-      data.requestTitle.trim();
-
-    if (!normalizedTitle) {
-      throw new Error(
-        'REQUEST_TITLE_REQUIRED'
-      );
-    }
-
-    updateData.requestTitle =
-      normalizedTitle;
-  }
-
-  if (
-    data.requestDescription !==
-    undefined
-  ) {
-    const normalizedDescription =
-      data.requestDescription.trim();
-
-    if (!normalizedDescription) {
-      throw new Error(
-        'REQUEST_DESCRIPTION_REQUIRED'
-      );
-    }
-
-    updateData.requestDescription =
-      normalizedDescription;
-  }
-
-  if (data.notes !== undefined) {
-    updateData.notes =
-      data.notes.trim();
-  }
-
-  const caseReference = doc(
-    db,
-    CASES_COLLECTION_NAME,
-    normalizedId
+  const caseId = required(
+    id,
+    'CASE_ID_REQUIRED'
   );
 
-  const batch = writeBatch(db);
-
-  batch.update(
-    caseReference,
-    updateData
+  const counselorId = required(
+    data.counselorId,
+    'COUNSELOR_ID_REQUIRED'
   );
 
-  await batch.commit();
-}
-
-export async function assignCaseCounselor(
-  caseId: string,
-  data: AssignCaseCounselorData
-): Promise<void> {
-  const normalizedCaseId =
-    caseId.trim();
-
-  const normalizedCounselorId =
-    data.assignedCounselorId.trim();
-
-  const normalizedUpdatedBy =
-    data.updatedBy.trim();
-
-  if (!normalizedCaseId) {
-    throw new Error(
-      'CASE_ID_REQUIRED'
-    );
-  }
-
-  if (!normalizedCounselorId) {
-    throw new Error(
-      'COUNSELOR_REQUIRED'
-    );
-  }
-
-  if (!normalizedUpdatedBy) {
-    throw new Error(
-      'UPDATED_BY_REQUIRED'
-    );
-  }
-
-  const caseReference = doc(
-    db,
-    CASES_COLLECTION_NAME,
-    normalizedCaseId
+  const counselorName = required(
+    data.counselorName,
+    'COUNSELOR_NAME_REQUIRED'
   );
 
-  const caseSnapshot =
-    await getDoc(caseReference);
+  const updatedBy = required(
+    data.updatedBy,
+    'USER_ID_REQUIRED'
+  );
 
-  if (!caseSnapshot.exists()) {
+  const currentCase =
+    await getCase(caseId);
+
+  if (!currentCase) {
     throw new Error(
       'CASE_NOT_FOUND'
     );
   }
 
-  const currentCase =
-    mapHelpCase(
-      caseSnapshot.id,
-      caseSnapshot.data()
+  if (
+    currentCase.status === 'closed'
+  ) {
+    throw new Error(
+      'CASE_ALREADY_CLOSED'
     );
+  }
 
-  const isCounselorChange =
-    Boolean(
-      currentCase.assignedCounselorId
+  if (
+    currentCase.counselorId ===
+    counselorId
+  ) {
+    throw new Error(
+      'COUNSELOR_ALREADY_ASSIGNED'
     );
+  }
 
-  const historyAction:
-    CaseHistoryAction =
-      isCounselorChange
-        ? 'COUNSELOR_CHANGED'
-        : 'COUNSELOR_ASSIGNED';
-
-  const historyDescription =
-    isCounselorChange
-      ? 'Le conseiller affecté au dossier a été remplacé.'
-      : 'Un conseiller a été affecté au dossier.';
-
-  const historyReference =
-    createHistoryReference();
-
-  const batch = writeBatch(db);
-
-  batch.update(
-    caseReference,
+  await updateDoc(
+    doc(
+      db,
+      COLLECTION_NAME,
+      caseId
+    ),
     {
-      assignedCounselorId:
-        normalizedCounselorId,
+      counselorId,
+      counselorName,
 
-      status: 'assigned',
+      updatedAt: serverTimestamp(),
+      updatedBy,
 
-      assignedAt:
-        serverTimestamp(),
-
-      updatedAt:
-        serverTimestamp(),
-
-      updatedBy:
-        normalizedUpdatedBy,
+      updatedByName:
+        data.updatedByName?.trim() ||
+        null,
     }
   );
-
-  batch.set(
-    historyReference,
-    buildHistoryData(
-      normalizedCaseId,
-      historyAction,
-      historyDescription,
-      normalizedUpdatedBy
-    )
-  );
-
-  await batch.commit();
 }
 
-export async function changeCaseStatus(
-  caseId: string,
-  data: ChangeCaseStatusData
+/**
+ * Suspend temporairement un dossier actif.
+ */
+export async function suspendCase(
+  id: string,
+  data: SuspendCaseData
 ): Promise<void> {
-  const normalizedCaseId =
-    caseId.trim();
-
-  const normalizedUpdatedBy =
-    data.updatedBy.trim();
-
-  if (!normalizedCaseId) {
-    throw new Error(
-      'CASE_ID_REQUIRED'
-    );
-  }
-
-  if (!normalizedUpdatedBy) {
-    throw new Error(
-      'UPDATED_BY_REQUIRED'
-    );
-  }
-
-  const caseReference = doc(
-    db,
-    CASES_COLLECTION_NAME,
-    normalizedCaseId
+  const caseId = required(
+    id,
+    'CASE_ID_REQUIRED'
   );
 
-  const caseSnapshot =
-    await getDoc(caseReference);
+  const suspensionReason = required(
+    data.suspensionReason,
+    'SUSPENSION_REASON_REQUIRED'
+  );
 
-  if (!caseSnapshot.exists()) {
+  const updatedBy = required(
+    data.updatedBy,
+    'USER_ID_REQUIRED'
+  );
+
+  const currentCase =
+    await getCase(caseId);
+
+  if (!currentCase) {
     throw new Error(
       'CASE_NOT_FOUND'
     );
   }
 
-  const currentCase =
-    mapHelpCase(
-      caseSnapshot.id,
-      caseSnapshot.data()
+  if (
+    currentCase.status !== 'active'
+  ) {
+    throw new Error(
+      'CASE_NOT_ACTIVE'
     );
-
-  if (
-    currentCase.status === data.status
-  ) {
-    return;
   }
 
-  const updateData: Record<
-    string,
-    unknown
-  > = {
-    status: data.status,
+  await updateDoc(
+    doc(
+      db,
+      COLLECTION_NAME,
+      caseId
+    ),
+    {
+      status: 'suspended',
 
-    updatedAt:
-      serverTimestamp(),
+      suspendedAt:
+        serverTimestamp(),
 
-    updatedBy:
-      normalizedUpdatedBy,
-  };
+      suspensionReason,
 
-  let historyAction:
-    CaseHistoryAction =
-      'STATUS_CHANGED';
+      updatedAt: serverTimestamp(),
+      updatedBy,
 
-  let historyDescription =
-    `Statut modifié de « ${
-      CASE_STATUS_LABELS[
-        currentCase.status
-      ]
-    } » à « ${
-      CASE_STATUS_LABELS[
-        data.status
-      ]
-    } ».`;
-
-  if (data.status === 'closed') {
-    const closingReason =
-      data.closingReason?.trim() ??
-      '';
-
-    if (!closingReason) {
-      throw new Error(
-        'CLOSING_REASON_REQUIRED'
-      );
+      updatedByName:
+        data.updatedByName?.trim() ||
+        null,
     }
+  );
+}
 
-    updateData.closedAt =
-      serverTimestamp();
+/**
+ * Réactive un dossier suspendu.
+ */
+export async function reactivateCase(
+  id: string,
+  data: ReactivateCaseData
+): Promise<void> {
+  const caseId = required(
+    id,
+    'CASE_ID_REQUIRED'
+  );
 
-    updateData.closedBy =
-      normalizedUpdatedBy;
+  const updatedBy = required(
+    data.updatedBy,
+    'USER_ID_REQUIRED'
+  );
 
-    updateData.closingReason =
-      closingReason;
+  const currentCase =
+    await getCase(caseId);
 
-    historyAction =
-      'CASE_CLOSED';
-
-    historyDescription =
-      `Dossier clôturé. Motif : ${closingReason}`;
+  if (!currentCase) {
+    throw new Error(
+      'CASE_NOT_FOUND'
+    );
   }
 
   if (
-    data.status === 'cancelled'
+    currentCase.status !== 'suspended'
   ) {
-    const cancellationReason =
-      data.cancellationReason?.trim() ??
-      '';
-
-    if (!cancellationReason) {
-      throw new Error(
-        'CANCELLATION_REASON_REQUIRED'
-      );
-    }
-
-    updateData.cancelledAt =
-      serverTimestamp();
-
-    updateData.cancelledBy =
-      normalizedUpdatedBy;
-
-    updateData.cancellationReason =
-      cancellationReason;
-
-    historyAction =
-      'CASE_CANCELLED';
-
-    historyDescription =
-      `Dossier annulé. Motif : ${cancellationReason}`;
+    throw new Error(
+      'CASE_NOT_SUSPENDED'
+    );
   }
 
-  const historyReference =
-    createHistoryReference();
+  await updateDoc(
+    doc(
+      db,
+      COLLECTION_NAME,
+      caseId
+    ),
+    {
+      status: 'active',
 
-  const batch = writeBatch(db);
+      suspendedAt: null,
+      suspensionReason: null,
 
-  batch.update(
-    caseReference,
-    updateData
+      updatedAt: serverTimestamp(),
+      updatedBy,
+
+      updatedByName:
+        data.updatedByName?.trim() ||
+        null,
+    }
+  );
+}
+
+/**
+ * Clôture définitivement un dossier.
+ */
+export async function closeCase(
+  id: string,
+  data: CloseCaseData
+): Promise<void> {
+  const caseId = required(
+    id,
+    'CASE_ID_REQUIRED'
   );
 
-  batch.set(
-    historyReference,
-    buildHistoryData(
-      normalizedCaseId,
-      historyAction,
-      historyDescription,
-      normalizedUpdatedBy
-    )
+  const closureReason = required(
+    data.closureReason,
+    'CLOSURE_REASON_REQUIRED'
   );
 
-  await batch.commit();
+  const updatedBy = required(
+    data.updatedBy,
+    'USER_ID_REQUIRED'
+  );
+
+  const currentCase =
+    await getCase(caseId);
+
+  if (!currentCase) {
+    throw new Error(
+      'CASE_NOT_FOUND'
+    );
+  }
+
+  if (
+    currentCase.status === 'closed'
+  ) {
+    throw new Error(
+      'CASE_ALREADY_CLOSED'
+    );
+  }
+
+  await updateDoc(
+    doc(
+      db,
+      COLLECTION_NAME,
+      caseId
+    ),
+    {
+      status: 'closed',
+
+      closedAt: serverTimestamp(),
+      closureReason,
+
+      updatedAt: serverTimestamp(),
+      updatedBy,
+
+      updatedByName:
+        data.updatedByName?.trim() ||
+        null,
+    }
+  );
 }

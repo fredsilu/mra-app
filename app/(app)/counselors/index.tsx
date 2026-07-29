@@ -1,3 +1,4 @@
+//app/(app)/counselors/index.tsx
 import {
   router,
   useFocusEffect,
@@ -29,12 +30,11 @@ import {
 import { getCases } from '@/features/cases/case.service';
 import {
   CASE_STATUS_LABELS,
-  type HelpCase,
+  type Case,
 } from '@/features/cases/case.types';
 import { getInterviews } from '@/features/interviews/interview.service';
-import {
-  INTERVIEW_STATUS_LABELS,
-  type Interview,
+import type {
+  Interview,
 } from '@/features/interviews/interview.types';
 
 function formatDate(value: { toDate: () => Date }): string {
@@ -113,8 +113,7 @@ export default function CounselorHomeScreen() {
     useState<Appointment[]>([]);
   const [interviews, setInterviews] =
     useState<Interview[]>([]);
-  const [cases, setCases] =
-    useState<HelpCase[]>([]);
+  const [cases, setCases] = useState<Case[]>([]);
   const [isLoading, setIsLoading] =
     useState(true);
   const [isRefreshing, setIsRefreshing] =
@@ -168,7 +167,7 @@ export default function CounselorHomeScreen() {
         setCases(
           caseList.filter(
             (item) =>
-              item.assignedCounselorId ===
+              item.counselorId  ===
               counselorId
           )
         );
@@ -212,23 +211,25 @@ export default function CounselorHomeScreen() {
     [appointments]
   );
 
-  const activeInterviews = useMemo(
+  const counselorInterviews = useMemo(
     () =>
-      interviews.filter(
-        (item) => item.status === 'draft'
+      [...interviews].sort(
+        (a, b) =>
+          b.createdAt.toMillis() -
+          a.createdAt.toMillis()
       ),
     [interviews]
   );
 
   const activeCases = useMemo(
-    () =>
-      cases.filter(
-        (item) =>
-          item.status !== 'closed' &&
-          item.status !== 'cancelled'
-      ),
-    [cases]
-  );
+  () =>
+    cases.filter(
+      (item) =>
+        item.status === 'active' ||
+        item.status === 'suspended'
+    ),
+  [cases]
+);
 
   async function handleLogout() {
     if (isLoggingOut) {
@@ -416,16 +417,16 @@ export default function CounselorHomeScreen() {
           }}
         >
           <SectionHeader
-            title="Entretiens en cours"
-            count={activeInterviews.length}
+            title="Mes entretiens"
+            count={counselorInterviews.length}
           />
 
-          {activeInterviews.length === 0 ? (
+          {counselorInterviews.length === 0 ? (
             <EmptyText>
-              Aucun entretien en cours.
+              Aucun entretien ne vous est affecté.
             </EmptyText>
           ) : (
-            activeInterviews.map((item) => (
+            counselorInterviews.map((item) => (
               <Pressable
                 key={item.id}
                 onPress={() =>
@@ -449,15 +450,26 @@ export default function CounselorHomeScreen() {
                 >
                   {item.personName}
                 </Text>
+
                 <Text
                   style={{
                     marginTop: 4,
                     color: COLORS.muted,
                   }}
                 >
-                  {item.interviewNumber} ·{' '}
-                  {formatDate(item.startedAt)}
+                  {item.interviewNumber}
                 </Text>
+
+                <Text
+                  style={{
+                    marginTop: 4,
+                    color: COLORS.muted,
+                  }}
+                >
+                  Enregistré le :{' '}
+                  {formatDate(item.createdAt)}
+                </Text>
+
                 <Text
                   style={{
                     marginTop: 4,
@@ -465,21 +477,19 @@ export default function CounselorHomeScreen() {
                     color: COLORS.text,
                   }}
                 >
-                  {INTERVIEW_STATUS_LABELS[item.status]}
+                  Conseiller : {item.counselorName}
                 </Text>
               </Pressable>
             ))
           )}
-
-          <View style={{ marginTop: 12 }}>
-            <AppButton
-              title="Voir tous mes entretiens"
-              onPress={() =>
-                router.push('/interviews')
-              }
-            />
-          </View>
+          <AppButton
+            title="Voir tous mes entretiens"
+            onPress={() =>
+              router.push('/interviews')
+            }
+          />
         </View>
+
 
         <View
           style={{
@@ -517,7 +527,7 @@ export default function CounselorHomeScreen() {
                     color: COLORS.text,
                   }}
                 >
-                  {item.requestTitle}
+                  Dossier de {item.personName}
                 </Text>
                 <Text
                   style={{
@@ -558,6 +568,6 @@ export default function CounselorHomeScreen() {
           onPress={handleLogout}
         />
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }

@@ -93,29 +93,13 @@ function mapInterview(
         ? data.counselorName
         : '',
 
-    status:
-      data.status === 'completed'
-        ? 'completed'
-        : 'draft',
+    summary: text(data.summary),
 
-    startedAt:
-      date(data.startedAt) ??
-      Timestamp.now(),
+    observations: text(data.observations),
 
-    endedAt:
-      date(data.endedAt),
-
-    summary:
-      text(data.summary),
-
-    observations:
-      text(data.observations),
-
-    recommendations:
-      text(data.recommendations),
-
-    decisionId:
-      text(data.decisionId),
+    recommendations: text(
+      data.recommendations
+    ),
 
     createdAt:
       date(data.createdAt) ??
@@ -131,15 +115,6 @@ function mapInterview(
 
     updatedAt:
       date(data.updatedAt),
-
-    completedAt:
-      date(data.completedAt),
-
-    completedBy:
-      text(data.completedBy),
-
-    completedByName:
-      text(data.completedByName),
   };
 }
 
@@ -149,7 +124,7 @@ export async function getInterviews(): Promise<
   const snapshot = await getDocs(
     query(
       collection(db, COLLECTION_NAME),
-      orderBy('startedAt', 'desc')
+      orderBy('createdAt', 'desc')
     )
   );
 
@@ -228,6 +203,10 @@ export async function createInterview(
     'APPOINTMENT_ID_REQUIRED'
   );
 
+  /*
+   * Un rendez-vous ne peut donner lieu
+   * qu'à un seul entretien.
+   */
   const existingInterview =
     await getInterviewByAppointmentId(
       appointmentId
@@ -258,13 +237,16 @@ export async function createInterview(
     appointmentSnapshot.data();
 
   /*
-   * L’entretien démarre pendant le rendez-vous.
-   * Le rendez-vous doit donc être confirmé,
-   * et non déjà réalisé.
+   * Un entretien peut être enregistré
+   * lorsque le rendez-vous est confirmé
+   * ou déjà marqué comme réalisé.
    */
-  if (appointment.status !== 'confirmed') {
+  if (
+    appointment.status !== 'confirmed' &&
+    appointment.status !== 'completed'
+  ) {
     throw new Error(
-      'APPOINTMENT_NOT_CONFIRMED'
+      'APPOINTMENT_NOT_READY_FOR_INTERVIEW'
     );
   }
 
@@ -278,6 +260,26 @@ export async function createInterview(
     'PERSON_ID_REQUIRED'
   );
 
+  const personName = required(
+    data.personName,
+    'PERSON_NAME_REQUIRED'
+  );
+
+  const counselorId = required(
+    data.counselorId,
+    'COUNSELOR_ID_REQUIRED'
+  );
+
+  const counselorName = required(
+    data.counselorName,
+    'COUNSELOR_NAME_REQUIRED'
+  );
+
+  const createdBy = required(
+    data.createdBy,
+    'USER_ID_REQUIRED'
+  );
+
   if (appointment.requestId !== requestId) {
     throw new Error(
       'APPOINTMENT_REQUEST_MISMATCH'
@@ -287,6 +289,15 @@ export async function createInterview(
   if (appointment.personId !== personId) {
     throw new Error(
       'APPOINTMENT_PERSON_MISMATCH'
+    );
+  }
+
+  if (
+    appointment.counselorId !==
+    counselorId
+  ) {
+    throw new Error(
+      'APPOINTMENT_COUNSELOR_MISMATCH'
     );
   }
 
@@ -310,57 +321,31 @@ export async function createInterview(
   batch.set(interviewRef, {
     interviewNumber,
     appointmentId,
-
     requestId,
 
     personId,
+    personName,
 
-    personName: required(
-      data.personName,
-      'PERSON_NAME_REQUIRED'
-    ),
-
-    counselorId: required(
-      data.counselorId,
-      'COUNSELOR_ID_REQUIRED'
-    ),
-
-    counselorName: required(
-      data.counselorName,
-      'COUNSELOR_NAME_REQUIRED'
-    ),
-
-    status: 'draft',
-
-    startedAt: Timestamp.fromDate(
-      data.startedAt
-    ),
-
-    endedAt: null,
+    counselorId,
+    counselorName,
 
     summary: null,
     observations: null,
     recommendations: null,
-    decisionId: null,
 
     createdAt: serverTimestamp(),
-
-    createdBy: required(
-      data.createdBy,
-      'USER_ID_REQUIRED'
-    ),
-
+    createdBy,
     createdByName:
       data.createdByName?.trim() ||
       null,
 
     updatedAt: serverTimestamp(),
-
-    completedAt: null,
-    completedBy: null,
-    completedByName: null,
   });
 
+  /*
+   * Le rendez-vous conserve l'identifiant
+   * de son unique entretien.
+   */
   batch.update(appointmentRef, {
     interviewId: interviewRef.id,
     updatedAt: serverTimestamp(),
@@ -386,14 +371,6 @@ export async function updateInterview(
   if (!interview) {
     throw new Error(
       'INTERVIEW_NOT_FOUND'
-    );
-  }
-
-  if (
-    interview.status === 'completed'
-  ) {
-    throw new Error(
-      'INTERVIEW_UPDATE_NOT_ALLOWED'
     );
   }
 
@@ -431,106 +408,4 @@ export async function updateInterview(
       updatedAt: serverTimestamp(),
     }
   );
-}
-
-export async function completeInterview(
-  id: string,
-  userId: string,
-  userName: string
-): Promise<void> {
-  const interviewId = required(
-    id,
-    'INTERVIEW_ID_REQUIRED'
-  );
-
-  const completedBy = required(
-    userId,
-    'USER_ID_REQUIRED'
-  );
-
-  const interview =
-    await getInterview(interviewId);
-
-  if (!interview) {
-    throw new Error(
-      'INTERVIEW_NOT_FOUND'
-    );
-  }
-
-  if (interview.status !== 'draft') {
-    throw new Error(
-      'INTERVIEW_ALREADY_COMPLETED'
-    );
-  }
-
-  if (!interview.summary?.trim()) {
-    throw new Error(
-      'INTERVIEW_SUMMARY_REQUIRED'
-    );
-  }
-
-  if (!interview.appointmentId.trim()) {
-    throw new Error(
-      'APPOINTMENT_ID_REQUIRED'
-    );
-  }
-
-  const interviewRef = doc(
-    db,
-    COLLECTION_NAME,
-    interviewId
-  );
-
-  const appointmentRef = doc(
-    db,
-    APPOINTMENTS_COLLECTION_NAME,
-    interview.appointmentId
-  );
-
-  const appointmentSnapshot =
-    await getDoc(appointmentRef);
-
-  if (!appointmentSnapshot.exists()) {
-    throw new Error(
-      'APPOINTMENT_NOT_FOUND'
-    );
-  }
-
-  const appointment =
-    appointmentSnapshot.data();
-
-  if (appointment.status !== 'confirmed') {
-    throw new Error(
-      'APPOINTMENT_NOT_CONFIRMED'
-    );
-  }
-
-  const completedByName =
-    userName.trim() || null;
-
-  const batch = writeBatch(db);
-
-  batch.update(interviewRef, {
-    status: 'completed',
-
-    endedAt: serverTimestamp(),
-    completedAt: serverTimestamp(),
-
-    completedBy,
-    completedByName,
-
-    updatedAt: serverTimestamp(),
-  });
-
-  batch.update(appointmentRef, {
-    status: 'completed',
-
-    completedAt: serverTimestamp(),
-    completedBy,
-    completedByName,
-
-    updatedAt: serverTimestamp(),
-  });
-
-  await batch.commit();
 }

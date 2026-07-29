@@ -1,4 +1,5 @@
 // app/(app)/interviews/index.tsx
+
 import {
   router,
   useFocusEffect,
@@ -18,15 +19,12 @@ import {
 
 import { COLORS } from '@/constants/theme';
 import { getInterviews } from '@/features/interviews/interview.service';
-import {
-  Interview,
-  INTERVIEW_STATUS_LABELS,
-} from '@/features/interviews/interview.types';
+import type { Interview } from '@/features/interviews/interview.types';
 
 function formatDate(
   interview: Interview
 ): string {
-  return interview.startedAt
+  return interview.createdAt
     .toDate()
     .toLocaleString(
       'fr-FR',
@@ -35,21 +33,6 @@ function formatDate(
         timeStyle: 'short',
       }
     );
-}
-
-function getStatusColor(
-  status: Interview['status']
-): string {
-  switch (status) {
-    case 'draft':
-      return '#1976D2';
-
-    case 'completed':
-      return '#2E7D32';
-
-    default:
-      return '#616161';
-  }
 }
 
 export default function InterviewsScreen() {
@@ -184,9 +167,7 @@ export default function InterviewsScreen() {
                   fontSize: 13,
                 }}
               >
-                {
-                  item.interviewNumber
-                }
+                {item.interviewNumber}
               </Text>
 
               <Text
@@ -206,7 +187,7 @@ export default function InterviewsScreen() {
                   marginTop: 6,
                 }}
               >
-                Début :{' '}
+                Enregistré le :{' '}
                 {formatDate(item)}
               </Text>
 
@@ -217,23 +198,6 @@ export default function InterviewsScreen() {
               >
                 Conseiller :{' '}
                 {item.counselorName}
-              </Text>
-
-              <Text
-                style={{
-                  marginTop: 8,
-                  color:
-                    getStatusColor(
-                      item.status
-                    ),
-                  fontWeight: '700',
-                }}
-              >
-                {
-                  INTERVIEW_STATUS_LABELS[
-                    item.status
-                  ]
-                }
               </Text>
             </Pressable>
           )}

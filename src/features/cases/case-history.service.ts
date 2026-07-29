@@ -1,4 +1,4 @@
-// src/services/case-history.service.ts
+// src/features/cases/case-history.service.ts
 
 import {
   Timestamp,
@@ -10,20 +10,37 @@ import {
 } from 'firebase/firestore';
 
 import { db } from '@/config/firebase';
-
-import {
+import type {
   CaseHistoryAction,
   CaseHistoryEntry,
-} from '@/features/cases/case-history.types';
+} from './case-history.types';
 
 const COLLECTION_NAME = 'case_history';
 
-function readString(
+const CASE_HISTORY_ACTIONS: CaseHistoryAction[] = [
+  'CASE_CREATED',
+  'COUNSELOR_CHANGED',
+  'CASE_SUSPENDED',
+  'CASE_REACTIVATED',
+  'CASE_CLOSED',
+];
+
+function optionalText(
   value: unknown
 ): string | undefined {
-  return typeof value === 'string'
-    ? value
+  return typeof value === 'string' && value.trim()
+    ? value.trim()
     : undefined;
+}
+
+function historyAction(
+  value: unknown
+): CaseHistoryAction {
+  return CASE_HISTORY_ACTIONS.includes(
+    value as CaseHistoryAction
+  )
+    ? (value as CaseHistoryAction)
+    : 'CASE_CREATED';
 }
 
 function mapCaseHistoryEntry(
@@ -32,20 +49,22 @@ function mapCaseHistoryEntry(
 ): CaseHistoryEntry {
   return {
     id,
-
     caseId:
-      readString(data.caseId) ?? '',
-
-    action:
-      (data.action as CaseHistoryAction) ??
-      'STATUS_CHANGED',
-
+      typeof data.caseId === 'string'
+        ? data.caseId
+        : '',
+    action: historyAction(data.action),
     description:
-      readString(data.description) ?? '',
-
+      typeof data.description === 'string'
+        ? data.description
+        : '',
     performedBy:
-      readString(data.performedBy) ?? '',
-
+      typeof data.performedBy === 'string'
+        ? data.performedBy
+        : '',
+    performedByName: optionalText(
+      data.performedByName
+    ),
     performedAt:
       data.performedAt instanceof Timestamp
         ? data.performedAt
@@ -62,27 +81,18 @@ export async function getCaseHistory(
     return [];
   }
 
-  const historyQuery = query(
-    collection(db, COLLECTION_NAME),
-    where(
-      'caseId',
-      '==',
-      normalizedCaseId
-    ),
-    orderBy(
-      'performedAt',
-      'desc'
+  const historySnapshot = await getDocs(
+    query(
+      collection(db, COLLECTION_NAME),
+      where('caseId', '==', normalizedCaseId),
+      orderBy('performedAt', 'desc')
     )
   );
 
-  const historySnapshot =
-    await getDocs(historyQuery);
-
-  return historySnapshot.docs.map(
-    (historyDocument) =>
-      mapCaseHistoryEntry(
-        historyDocument.id,
-        historyDocument.data()
-      )
+  return historySnapshot.docs.map((item) =>
+    mapCaseHistoryEntry(
+      item.id,
+      item.data()
+    )
   );
 }
