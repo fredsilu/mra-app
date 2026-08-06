@@ -1,19 +1,12 @@
 // src/features/cases/case.types.ts
 
-import type { Timestamp } from 'firebase/firestore';
+import type { Timestamp } from "firebase/firestore";
 
-export type CaseStatus =
-  | 'active'
-  | 'suspended'
-  | 'closed';
+export type CaseStatus = "active" | "closed";
 
-export const CASE_STATUS_LABELS: Record<
-  CaseStatus,
-  string
-> = {
-  active: 'Actif',
-  suspended: 'Suspendu',
-  closed: 'Clôturé',
+export const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
+  active: "Ouvert",
+  closed: "Clôturé",
 };
 
 export interface Case {
@@ -34,11 +27,10 @@ export interface Case {
   status: CaseStatus;
   openedAt: Timestamp;
 
-  suspendedAt?: Timestamp;
-  suspensionReason?: string;
-
   closedAt?: Timestamp;
   closureReason?: string;
+
+  closureSummary?: string;
 
   createdAt: Timestamp;
   createdBy: string;
@@ -73,21 +65,17 @@ export interface ChangeCaseCounselorData {
   updatedByName?: string;
 }
 
-export interface SuspendCaseData {
-  suspensionReason: string;
-
-  updatedBy: string;
-  updatedByName?: string;
-}
-
-export interface ReactivateCaseData {
-  updatedBy: string;
-  updatedByName?: string;
-}
-
 export interface CloseCaseData {
   closureReason: string;
+  closureSummary: string;
 
   updatedBy: string;
   updatedByName?: string;
+}
+
+export interface CreateCaseFromFirstInterviewData {
+  firstInterviewActivityId: string;
+
+  createdBy: string;
+  createdByName?: string;
 }

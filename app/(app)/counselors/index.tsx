@@ -1,573 +1,249 @@
 //app/(app)/counselors/index.tsx
-import {
-  router,
-  useFocusEffect,
-} from 'expo-router';
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+
+// app/(app)/counselors/index.tsx
+
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   RefreshControl,
   SafeAreaView,
   ScrollView,
+  StyleSheet,
   Text,
+  useWindowDimensions,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { AppButton } from '@/components/ui/AppButton';
-import { COLORS } from '@/constants/theme';
-import { useAuth } from '@/contexts/AuthContext';
-import { getAppointments } from '@/features/appointments/appointment.service';
+import { COLORS } from "@/constants/theme";
+import { useAuth } from "@/contexts/AuthContext";
 import {
-  APPOINTMENT_STATUS_LABELS,
-  type Appointment,
-} from '@/features/appointments/appointment.types';
-import { getCases } from '@/features/cases/case.service';
-import {
-  CASE_STATUS_LABELS,
-  type Case,
-} from '@/features/cases/case.types';
-import { getInterviews } from '@/features/interviews/interview.service';
-import type {
-  Interview,
-} from '@/features/interviews/interview.types';
+  CounselorActivities,
+  CounselorCases,
+  CounselorHeader,
+  CounselorLogout,
+  CounselorRecentActivities,
+  CounselorStatistics,
+  getCounselorDashboardData,
+  type CounselorDashboardData,
+} from "@/features/counselor-dashboard";
 
-function formatDate(value: { toDate: () => Date }): string {
-  return value.toDate().toLocaleString('fr-FR', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
-
-function SectionHeader({
-  title,
-  count,
-}: {
-  title: string;
-  count: number;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: '800',
-          color: COLORS.text,
-        }}
-      >
-        {title}
-      </Text>
-
-      <View
-        style={{
-          minWidth: 30,
-          paddingHorizontal: 9,
-          paddingVertical: 4,
-          borderRadius: 999,
-          backgroundColor: '#E8EEF9',
-          alignItems: 'center',
-        }}
-      >
-        <Text
-          style={{
-            fontWeight: '800',
-            color: COLORS.text,
-          }}
-        >
-          {count}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function EmptyText({ children }: { children: string }) {
-  return (
-    <Text
-      style={{
-        color: COLORS.muted,
-        lineHeight: 21,
-      }}
-    >
-      {children}
-    </Text>
-  );
-}
+const emptyData: CounselorDashboardData = {
+  peopleCount: 0,
+  activeCasesCount: 0,
+  plannedActivitiesCount: 0,
+  overdueActivitiesCount: 0,
+  plannedActivities: [],
+  recentCompletedActivities: [],
+  activeCases: [],
+};
 
 export default function CounselorHomeScreen() {
   const { profile, logout } = useAuth();
+  const { width } = useWindowDimensions();
 
-  const [appointments, setAppointments] =
-    useState<Appointment[]>([]);
-  const [interviews, setInterviews] =
-    useState<Interview[]>([]);
-  const [cases, setCases] = useState<Case[]>([]);
-  const [isLoading, setIsLoading] =
-    useState(true);
-  const [isRefreshing, setIsRefreshing] =
-    useState(false);
-  const [isLoggingOut, setIsLoggingOut] =
-    useState(false);
+  const isDesktop = width >= 900;
 
-  const counselorId = profile?.uid ?? '';
+  const [data, setData] = useState<CounselorDashboardData>(emptyData);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const loadData = useCallback(
-    async (refresh = false) => {
+    async (refreshOnly = false) => {
+      const counselorId = profile?.uid?.trim();
+
       if (!counselorId) {
-        setAppointments([]);
-        setInterviews([]);
-        setCases([]);
+        setData(emptyData);
         setIsLoading(false);
         return;
       }
 
       try {
-        if (refresh) {
+        if (refreshOnly) {
           setIsRefreshing(true);
         } else {
           setIsLoading(true);
         }
 
-        const [
-          appointmentList,
-          interviewList,
-          caseList,
-        ] = await Promise.all([
-          getAppointments(),
-          getInterviews(),
-          getCases(),
-        ]);
+        const result = await getCounselorDashboardData(counselorId);
 
-        setAppointments(
-          appointmentList.filter(
-            (item) =>
-              item.counselorId === counselorId
-          )
-        );
-
-        setInterviews(
-          interviewList.filter(
-            (item) =>
-              item.counselorId === counselorId
-          )
-        );
-
-        setCases(
-          caseList.filter(
-            (item) =>
-              item.counselorId  ===
-              counselorId
-          )
-        );
+        setData(result);
       } catch (error) {
         console.error(
-          'Erreur lors du chargement de l’espace conseiller :',
-          error
+          "Erreur lors du chargement de l’espace conseiller :",
+          error,
         );
 
         Alert.alert(
-          'Chargement impossible',
-          'Impossible de charger vos rendez-vous, entretiens et dossiers.'
+          "Chargement impossible",
+          "Impossible de charger vos activités et vos dossiers.",
         );
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
       }
     },
-    [counselorId]
+    [profile?.uid],
   );
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      void loadData();
+    }, [loadData]),
   );
 
-  const upcomingAppointments = useMemo(
-    () =>
-      appointments
-        .filter(
-          (item) =>
-            item.status === 'scheduled' ||
-            item.status === 'confirmed'
-        )
-        .sort(
-          (a, b) =>
-            a.startAt.toMillis() -
-            b.startAt.toMillis()
-        ),
-    [appointments]
-  );
-
-  const counselorInterviews = useMemo(
-    () =>
-      [...interviews].sort(
-        (a, b) =>
-          b.createdAt.toMillis() -
-          a.createdAt.toMillis()
-      ),
-    [interviews]
-  );
-
-  const activeCases = useMemo(
-  () =>
-    cases.filter(
-      (item) =>
-        item.status === 'active' ||
-        item.status === 'suspended'
-    ),
-  [cases]
-);
-
-  async function handleLogout() {
+  async function handleLogout(): Promise<void> {
     if (isLoggingOut) {
       return;
     }
 
     try {
       setIsLoggingOut(true);
+
       await logout();
-      router.replace('/login');
+
+      router.replace("/login");
     } catch (error) {
-      console.error(
-        'Erreur lors de la déconnexion :',
-        error
-      );
+      console.error("Erreur lors de la déconnexion :", error);
 
       Alert.alert(
-        'Déconnexion impossible',
-        'Une erreur est survenue pendant la déconnexion.'
+        "Déconnexion impossible",
+        "Une erreur est survenue pendant la déconnexion.",
       );
     } finally {
       setIsLoggingOut(false);
     }
   }
 
-  if (isLoading) {
+  if (!profile) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: COLORS.light,
-        }}
-      >
-        <ActivityIndicator size="large" />
-        <Text
-          style={{
-            marginTop: 12,
-            color: COLORS.muted,
-          }}
-        >
-          Chargement de votre espace...
+      <SafeAreaView style={styles.center}>
+        <Text style={styles.errorTitle}>Profil introuvable</Text>
+
+        <Text style={styles.errorText}>
+          Votre profil utilisateur MRA n’est pas configuré.
         </Text>
       </SafeAreaView>
     );
   }
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.center}>
+        <ActivityIndicator size="large" />
+
+        <Text style={styles.loadingText}>Chargement de votre espace...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: COLORS.light,
-      }}
-    >
+    <SafeAreaView style={styles.screen}>
       <ScrollView
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={() => loadData(true)}
+            onRefresh={() => void loadData(true)}
           />
         }
-        contentContainerStyle={{
-          width: '100%',
-          maxWidth: 760,
-          alignSelf: 'center',
-          padding: 18,
-          paddingBottom: 50,
-        }}
+        contentContainerStyle={styles.content}
       >
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '800',
-            color: COLORS.text,
-          }}
-        >
-          Espace Conseiller
-        </Text>
+        <CounselorHeader profile={profile} />
 
-        <Text
-          style={{
-            marginTop: 6,
-            color: COLORS.muted,
-          }}
-        >
-          Mes âmes, mes rendez-vous et mes suivis
-        </Text>
-
-        <Text
-          style={{
-            marginTop: 18,
-            marginBottom: 28,
-            fontSize: 18,
-            fontWeight: '700',
-            color: COLORS.text,
-          }}
-        >
-          {profile?.displayName || 'Conseiller MRA'}
-        </Text>
-
-        <View
-          style={{
-            marginBottom: 26,
-            padding: 16,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: '#ECECEC',
-            backgroundColor: '#FFFFFF',
-          }}
-        >
-          <SectionHeader
-            title="Mes rendez-vous"
-            count={upcomingAppointments.length}
-          />
-
-          {upcomingAppointments.length === 0 ? (
-            <EmptyText>
-              Aucun rendez-vous à venir ne vous est affecté.
-            </EmptyText>
-          ) : (
-            upcomingAppointments.map((item) => (
-              <Pressable
-                key={item.id}
-                onPress={() =>
-                  router.push({
-                    pathname: '/appointments/[id]',
-                    params: { id: item.id },
-                  })
-                }
-                style={{
-                  paddingVertical: 13,
-                  borderTopWidth: 1,
-                  borderTopColor: '#EEEEEE',
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: '700',
-                    color: COLORS.text,
-                  }}
-                >
-                  {item.personName}
-                </Text>
-                <Text
-                  style={{
-                    marginTop: 4,
-                    color: COLORS.muted,
-                  }}
-                >
-                  {formatDate(item.startAt)}
-                </Text>
-                <Text
-                  style={{
-                    marginTop: 4,
-                    fontWeight: '600',
-                    color: COLORS.text,
-                  }}
-                >
-                  {APPOINTMENT_STATUS_LABELS[item.status]}
-                </Text>
-              </Pressable>
-            ))
-          )}
-
-          <View style={{ marginTop: 12 }}>
-            <AppButton
-              title="Voir tous mes rendez-vous"
-              onPress={() =>
-                router.push('/appointments')
-              }
-            />
-          </View>
-        </View>
-
-        <View
-          style={{
-            marginBottom: 26,
-            padding: 16,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: '#ECECEC',
-            backgroundColor: '#FFFFFF',
-          }}
-        >
-          <SectionHeader
-            title="Mes entretiens"
-            count={counselorInterviews.length}
-          />
-
-          {counselorInterviews.length === 0 ? (
-            <EmptyText>
-              Aucun entretien ne vous est affecté.
-            </EmptyText>
-          ) : (
-            counselorInterviews.map((item) => (
-              <Pressable
-                key={item.id}
-                onPress={() =>
-                  router.push({
-                    pathname: '/interviews/[id]',
-                    params: { id: item.id },
-                  })
-                }
-                style={{
-                  paddingVertical: 13,
-                  borderTopWidth: 1,
-                  borderTopColor: '#EEEEEE',
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: '700',
-                    color: COLORS.text,
-                  }}
-                >
-                  {item.personName}
-                </Text>
-
-                <Text
-                  style={{
-                    marginTop: 4,
-                    color: COLORS.muted,
-                  }}
-                >
-                  {item.interviewNumber}
-                </Text>
-
-                <Text
-                  style={{
-                    marginTop: 4,
-                    color: COLORS.muted,
-                  }}
-                >
-                  Enregistré le :{' '}
-                  {formatDate(item.createdAt)}
-                </Text>
-
-                <Text
-                  style={{
-                    marginTop: 4,
-                    fontWeight: '600',
-                    color: COLORS.text,
-                  }}
-                >
-                  Conseiller : {item.counselorName}
-                </Text>
-              </Pressable>
-            ))
-          )}
-          <AppButton
-            title="Voir tous mes entretiens"
-            onPress={() =>
-              router.push('/interviews')
-            }
-          />
-        </View>
-
-
-        <View
-          style={{
-            marginBottom: 28,
-            padding: 16,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: '#ECECEC',
-            backgroundColor: '#FFFFFF',
-          }}
-        >
-          <SectionHeader
-            title="Mes suivis"
-            count={activeCases.length}
-          />
-
-          {activeCases.length === 0 ? (
-            <EmptyText>
-              Aucun dossier actif ne vous est affecté.
-            </EmptyText>
-          ) : (
-            activeCases.map((item) => (
-              <View
-                key={item.id}
-                style={{
-                  paddingVertical: 13,
-                  borderTopWidth: 1,
-                  borderTopColor: '#EEEEEE',
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: '700',
-                    color: COLORS.text,
-                  }}
-                >
-                  Dossier de {item.personName}
-                </Text>
-                <Text
-                  style={{
-                    marginTop: 4,
-                    color: COLORS.muted,
-                  }}
-                >
-                  {item.caseNumber || item.id}
-                </Text>
-                <Text
-                  style={{
-                    marginTop: 4,
-                    fontWeight: '600',
-                    color: COLORS.text,
-                  }}
-                >
-                  {CASE_STATUS_LABELS[item.status]}
-                </Text>
-              </View>
-            ))
-          )}
-
-          <View style={{ marginTop: 12 }}>
-            <AppButton
-              title="Voir tous mes suivis"
-              onPress={() => router.push('/cases')}
-            />
-          </View>
-        </View>
-
-        <AppButton
-          title={
-            isLoggingOut
-              ? 'Déconnexion...'
-              : 'Se déconnecter'
-          }
-          disabled={isLoggingOut}
-          onPress={handleLogout}
+        <CounselorStatistics
+          peopleCount={data.peopleCount}
+          activeCasesCount={data.activeCasesCount}
+          plannedActivitiesCount={data.plannedActivitiesCount}
+          overdueActivitiesCount={data.overdueActivitiesCount}
         />
+
+        <View
+          style={[
+            styles.primaryGrid,
+            !isDesktop ? styles.primaryGridMobile : null,
+          ]}
+        >
+          <View style={styles.column}>
+            <CounselorActivities activities={data.plannedActivities} />
+          </View>
+
+          <View style={styles.column}>
+            <CounselorCases cases={data.activeCases} />
+          </View>
+        </View>
+
+        <View style={styles.recentSection}>
+          <CounselorRecentActivities
+            activities={data.recentCompletedActivities}
+          />
+        </View>
+
+        <CounselorLogout isLoggingOut={isLoggingOut} onLogout={handleLogout} />
       </ScrollView>
-    </SafeAreaView >
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.light,
+  },
+
+  content: {
+    alignSelf: "center",
+    maxWidth: 1200,
+    padding: 20,
+    paddingBottom: 50,
+    width: "100%",
+  },
+
+  center: {
+    alignItems: "center",
+    backgroundColor: COLORS.light,
+    flex: 1,
+    justifyContent: "center",
+    padding: 24,
+  },
+
+  loadingText: {
+    color: COLORS.muted,
+    marginTop: 12,
+  },
+
+  errorTitle: {
+    color: COLORS.text,
+    fontSize: 22,
+    fontWeight: "800",
+  },
+
+  errorText: {
+    color: COLORS.muted,
+    lineHeight: 21,
+    marginTop: 8,
+    textAlign: "center",
+  },
+
+  primaryGrid: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 22,
+  },
+
+  primaryGridMobile: {
+    flexDirection: "column",
+  },
+
+  column: {
+    flex: 1,
+    width: "100%",
+  },
+
+  recentSection: {
+    marginTop: 16,
+  },
+});

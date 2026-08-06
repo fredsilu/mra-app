@@ -1,0 +1,64 @@
+import { StyleSheet, Text, View } from "react-native";
+
+import { COLORS } from "@/constants/theme";
+import type { Person } from "@/features/people/person.types";
+
+type Props = {
+  person: Person;
+};
+
+export function PersonContactCard({ person }: Props) {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.title}>Contact</Text>
+
+      <Info label="Téléphone" value={person.phone} />
+      <Info label="Email" value={person.email} />
+      <Info label="Adresse" value={person.address} />
+    </View>
+  );
+}
+
+function Info({ label, value }: { label: string; value?: string }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.label}>{label}</Text>
+
+      <Text style={styles.value}>{value || "Non renseigné"}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 14,
+    padding: 18,
+  },
+
+  title: {
+    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "800",
+  },
+
+  row: {
+    gap: 4,
+  },
+
+  label: {
+    color: COLORS.muted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  value: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "600",
+    lineHeight: 22,
+  },
+});

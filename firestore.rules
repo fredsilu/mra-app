@@ -37,8 +37,7 @@ service cloud.firestore {
         'responsable',
         'adjoint',
         'secretaire',
-        'conseiller',
-        'logistique'
+        'conseiller'
       ];
     }
 
@@ -87,6 +86,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /activities/{activityId} {
+      allow read, create, update: if isActiveUser();
+      allow delete: if false;
+    }
+
+    match /cases/{caseId} {
+      allow read, create, update: if isActiveUser();
+      allow delete: if false;
+    }
+
+    /*
+     * Anciennes collections conservées temporairement
+     * jusqu'à la fin de leur migration vers activities.
+     */
     match /requests/{requestId} {
       allow read, create, update: if isActiveUser();
       allow delete: if false;
@@ -102,19 +115,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    match /cases/{caseId} {
-      allow read, create, update: if isActiveUser();
-      allow delete: if false;
-    }
-
     match /case_history/{historyId} {
       allow read, create: if isActiveUser();
       allow update, delete: if false;
     }
+
     match /case_activities/{activityId} {
-  allow read, create, update: if isActiveUser();
-  allow delete: if false;
-}
+      allow read, create, update: if isActiveUser();
+      allow delete: if false;
+    }
 
     match /counters/{counterId} {
       allow read: if isActiveUser();

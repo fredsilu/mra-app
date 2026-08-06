@@ -4,7 +4,7 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   signOut,
-} from 'firebase/auth';
+} from "firebase/auth";
 
 import {
   collection,
@@ -17,17 +17,11 @@ import {
   setDoc,
   updateDoc,
   where,
-} from 'firebase/firestore';
+} from "firebase/firestore";
 
-import {
-  db,
-  userCreationAuth,
-} from '@/config/firebase';
+import { db, userCreationAuth } from "@/config/firebase";
 
-import {
-  UserProfile,
-  UserRole,
-} from '@/features/users/user.types';
+import { UserProfile, UserRole } from "@/features/users/user.types";
 
 type UpdateUserProfileData = {
   displayName?: string;
@@ -45,20 +39,14 @@ export type CreateUserProfileData = {
 
 function mapUserProfile(
   id: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ): UserProfile {
   return {
     uid: id,
 
-    email:
-      typeof data.email === 'string'
-        ? data.email
-        : '',
+    email: typeof data.email === "string" ? data.email : "",
 
-    displayName:
-      typeof data.displayName === 'string'
-        ? data.displayName
-        : '',
+    displayName: typeof data.displayName === "string" ? data.displayName : "",
 
     role: data.role as UserRole,
 
@@ -66,129 +54,93 @@ function mapUserProfile(
   };
 }
 
-export async function getUserProfile(
-  uid: string
-): Promise<UserProfile | null> {
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const normalizedUid = uid.trim();
 
   if (!normalizedUid) {
     return null;
   }
 
-  const userReference = doc(
-    db,
-    'users',
-    normalizedUid
-  );
+  const userReference = doc(db, "users", normalizedUid);
 
-  const userSnapshot =
-    await getDoc(userReference);
+  const userSnapshot = await getDoc(userReference);
 
   if (!userSnapshot.exists()) {
     return null;
   }
 
-  return mapUserProfile(
-    userSnapshot.id,
-    userSnapshot.data()
-  );
+  return mapUserProfile(userSnapshot.id, userSnapshot.data());
 }
 
-export async function getUserById(
-  uid: string
-): Promise<UserProfile | null> {
+export async function getUserById(uid: string): Promise<UserProfile | null> {
   return getUserProfile(uid);
 }
 
-export async function getUsers(): Promise<
-  UserProfile[]
-> {
+export async function getUsers(): Promise<UserProfile[]> {
   const usersQuery = query(
-    collection(db, 'users'),
-    orderBy('displayName', 'asc')
+    collection(db, "users"),
+    orderBy("displayName", "asc"),
   );
 
-  const usersSnapshot =
-    await getDocs(usersQuery);
+  const usersSnapshot = await getDocs(usersQuery);
 
-  return usersSnapshot.docs.map(
-    (userDocument) =>
-      mapUserProfile(
-        userDocument.id,
-        userDocument.data()
-      )
+  return usersSnapshot.docs.map((userDocument) =>
+    mapUserProfile(userDocument.id, userDocument.data()),
   );
 }
 
 export async function createUserProfile(
-  data: CreateUserProfileData
+  data: CreateUserProfileData,
 ): Promise<string> {
-  const displayName =
-    data.displayName.trim();
+  const displayName = data.displayName.trim();
 
-  const email =
-    data.email.trim().toLowerCase();
+  const email = data.email.trim().toLowerCase();
 
   const password = data.password;
 
   if (!displayName) {
-    throw new Error(
-      'DISPLAY_NAME_REQUIRED'
-    );
+    throw new Error("DISPLAY_NAME_REQUIRED");
   }
 
   if (!email) {
-    throw new Error('EMAIL_REQUIRED');
+    throw new Error("EMAIL_REQUIRED");
   }
 
   if (password.length < 6) {
-    throw new Error(
-      'PASSWORD_TOO_SHORT'
-    );
+    throw new Error("PASSWORD_TOO_SHORT");
   }
 
   let createdUser:
-    | Awaited<
-        ReturnType<
-          typeof createUserWithEmailAndPassword
-        >
-      >
-    | undefined;
+    Awaited<ReturnType<typeof createUserWithEmailAndPassword>> | undefined;
 
   try {
-    createdUser =
-      await createUserWithEmailAndPassword(
-        userCreationAuth,
-        email,
-        password
-      );
+    createdUser = await createUserWithEmailAndPassword(
+      userCreationAuth,
+      email,
+      password,
+    );
 
     const uid = createdUser.user.uid;
 
-    await setDoc(
-      doc(db, 'users', uid),
-      {
-        uid,
-        displayName,
-        email,
-        role: data.role,
-        isActive: data.isActive,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }
-    );
+    await setDoc(doc(db, "users", uid), {
+      uid,
+      displayName,
+      email,
+      role: data.role,
+      isActive: data.isActive,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
 
     return uid;
   } catch (error) {
     if (createdUser?.user) {
       try {
-        await deleteUser(
-          createdUser.user
-        );
+        await deleteUser(createdUser.user);
       } catch (rollbackError) {
         console.error(
-          'Impossible de supprimer le compte après échec de création du profil :',
-          rollbackError
+          "Impossible de supprimer le compte après échec de création du profil :",
+          rollbackError,
         );
       }
     }
@@ -196,223 +148,129 @@ export async function createUserProfile(
     throw error;
   } finally {
     try {
-      await signOut(
-        userCreationAuth
-      );
+      await signOut(userCreationAuth);
     } catch (signOutError) {
       console.error(
-        'Impossible de fermer la session secondaire :',
-        signOutError
+        "Impossible de fermer la session secondaire :",
+        signOutError,
       );
     }
   }
 }
 
-async function getActiveResponsables(): Promise<
-  UserProfile[]
-> {
+async function getActiveResponsables(): Promise<UserProfile[]> {
   const responsablesQuery = query(
-    collection(db, 'users'),
-    where(
-      'role',
-      '==',
-      'responsable'
-    ),
-    where(
-      'isActive',
-      '==',
-      true
-    )
+    collection(db, "users"),
+    where("role", "==", "responsable"),
+    where("isActive", "==", true),
   );
 
-  const responsablesSnapshot =
-    await getDocs(responsablesQuery);
+  const responsablesSnapshot = await getDocs(responsablesQuery);
 
-  return responsablesSnapshot.docs.map(
-    (userDocument) =>
-      mapUserProfile(
-        userDocument.id,
-        userDocument.data()
-      )
+  return responsablesSnapshot.docs.map((userDocument) =>
+    mapUserProfile(userDocument.id, userDocument.data()),
   );
 }
 
 async function ensureLastActiveResponsableIsProtected(
   currentUser: UserProfile,
-  data: UpdateUserProfileData
+  data: UpdateUserProfileData,
 ): Promise<void> {
   const isCurrentlyActiveResponsable =
-    currentUser.role ===
-      'responsable' &&
-    currentUser.isActive;
+    currentUser.role === "responsable" && currentUser.isActive;
 
   if (!isCurrentlyActiveResponsable) {
     return;
   }
 
   const willLoseResponsableRole =
-    data.role !== undefined &&
-    data.role !== 'responsable';
+    data.role !== undefined && data.role !== "responsable";
 
-  const willBeDeactivated =
-    data.isActive === false;
+  const willBeDeactivated = data.isActive === false;
 
-  if (
-    !willLoseResponsableRole &&
-    !willBeDeactivated
-  ) {
+  if (!willLoseResponsableRole && !willBeDeactivated) {
     return;
   }
 
-  const activeResponsables =
-    await getActiveResponsables();
+  const activeResponsables = await getActiveResponsables();
 
-  const otherActiveResponsables =
-    activeResponsables.filter(
-      (responsable) =>
-        responsable.uid !==
-        currentUser.uid
-    );
+  const otherActiveResponsables = activeResponsables.filter(
+    (responsable) => responsable.uid !== currentUser.uid,
+  );
 
-  if (
-    otherActiveResponsables.length === 0
-  ) {
-    throw new Error(
-      'LAST_ACTIVE_RESPONSABLE'
-    );
+  if (otherActiveResponsables.length === 0) {
+    throw new Error("LAST_ACTIVE_RESPONSABLE");
   }
 }
 
 export async function updateUserProfile(
   uid: string,
-  data: UpdateUserProfileData
+  data: UpdateUserProfileData,
 ): Promise<void> {
   const normalizedUid = uid.trim();
 
   if (!normalizedUid) {
-    throw new Error(
-      'USER_ID_REQUIRED'
-    );
+    throw new Error("USER_ID_REQUIRED");
   }
 
-  const userReference = doc(
-    db,
-    'users',
-    normalizedUid
-  );
+  const userReference = doc(db, "users", normalizedUid);
 
-  const userSnapshot =
-    await getDoc(userReference);
+  const userSnapshot = await getDoc(userReference);
 
   if (!userSnapshot.exists()) {
-    throw new Error(
-      'USER_NOT_FOUND'
-    );
+    throw new Error("USER_NOT_FOUND");
   }
 
-  const currentUser = mapUserProfile(
-    userSnapshot.id,
-    userSnapshot.data()
-  );
+  const currentUser = mapUserProfile(userSnapshot.id, userSnapshot.data());
 
-  const updateData: UpdateUserProfileData =
-    {};
+  const updateData: UpdateUserProfileData = {};
 
-  if (
-    data.displayName !== undefined
-  ) {
-    const normalizedDisplayName =
-      data.displayName.trim();
+  if (data.displayName !== undefined) {
+    const normalizedDisplayName = data.displayName.trim();
 
     if (!normalizedDisplayName) {
-      throw new Error(
-        'DISPLAY_NAME_REQUIRED'
-      );
+      throw new Error("DISPLAY_NAME_REQUIRED");
     }
 
-    if (
-      normalizedDisplayName !==
-      currentUser.displayName
-    ) {
-      updateData.displayName =
-        normalizedDisplayName;
+    if (normalizedDisplayName !== currentUser.displayName) {
+      updateData.displayName = normalizedDisplayName;
     }
   }
 
-  if (
-    data.role !== undefined &&
-    data.role !== currentUser.role
-  ) {
+  if (data.role !== undefined && data.role !== currentUser.role) {
     updateData.role = data.role;
   }
 
-  if (
-    data.isActive !== undefined &&
-    data.isActive !==
-      currentUser.isActive
-  ) {
-    updateData.isActive =
-      data.isActive;
+  if (data.isActive !== undefined && data.isActive !== currentUser.isActive) {
+    updateData.isActive = data.isActive;
   }
 
-  if (
-    Object.keys(updateData).length ===
-    0
-  ) {
+  if (Object.keys(updateData).length === 0) {
     return;
   }
 
-  await ensureLastActiveResponsableIsProtected(
-    currentUser,
-    updateData
-  );
+  await ensureLastActiveResponsableIsProtected(currentUser, updateData);
 
-  await updateDoc(
-    userReference,
-    {
-      ...updateData,
-      updatedAt: serverTimestamp(),
-    }
-  );
+  await updateDoc(userReference, {
+    ...updateData,
+    updatedAt: serverTimestamp(),
+  });
 }
 
-export async function getActiveCounselors(): Promise<
-  UserProfile[]
-> {
-  const counselorsQuery = query(
-    collection(db, 'users'),
-    where(
-      'role',
-      '==',
-      'conseiller'
-    ),
-    where(
-      'isActive',
-      '==',
-      true
-    )
+export async function getActiveCounselors(): Promise<UserProfile[]> {
+  const usersSnapshot = await getDocs(
+    query(collection(db, "users"), where("isActive", "==", true)),
   );
 
-  const counselorsSnapshot =
-    await getDocs(counselorsQuery);
-
-  const counselors =
-    counselorsSnapshot.docs.map(
-      (userDocument) =>
-        mapUserProfile(
-          userDocument.id,
-          userDocument.data()
-        )
+  const counselors = usersSnapshot.docs
+    .map((userDocument) => mapUserProfile(userDocument.id, userDocument.data()))
+    .filter((user) =>
+      ["responsable", "adjoint", "conseiller"].includes(user.role),
     );
 
-  return counselors.sort(
-    (firstCounselor, secondCounselor) =>
-      firstCounselor.displayName.localeCompare(
-        secondCounselor.displayName,
-        'fr',
-        {
-          sensitivity: 'base',
-        }
-      )
+  return counselors.sort((firstUser, secondUser) =>
+    firstUser.displayName.localeCompare(secondUser.displayName, "fr", {
+      sensitivity: "base",
+    }),
   );
 }

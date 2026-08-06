@@ -1,85 +1,95 @@
 // app/(app)/cases/form.tsx
+// app/(app)/cases/form.tsx
 
-import {
-  router,
-  useLocalSearchParams,
-} from 'expo-router';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   SafeAreaView,
-  ScrollView,
+  StyleSheet,
   Text,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { AppButton } from '@/components/ui/AppButton';
-import { COLORS } from '@/constants/theme';
-import { useAuth } from '@/contexts/AuthContext';
 import {
-  createCase,
-  getCaseByContractId,
-} from '@/features/cases/case.service';
-import { getContract } from '@/features/contracts/contract.service';
-import type { Contract } from '@/features/contracts/contract.types';
+  FormActions,
+  FormCard,
+  FormHeader,
+  FormPage,
+} from "@/components/forms";
+import { AppButton } from "@/components/ui/AppButton";
+import { COLORS } from "@/constants/theme";
+import { useAuth } from "@/contexts/AuthContext";
+import { getActivityById, type Activity } from "@/features/activities";
+import {
+  createCaseFromFirstInterview,
+  getOpenCaseByPersonId,
+} from "@/features/cases/case.service";
 
-function getCreationErrorMessage(
-  error: unknown
-): string {
+function showMessage(title: string, message: string): void {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+
+  Alert.alert(title, message);
+}
+
+function getCreationErrorMessage(error: unknown): string {
   if (!(error instanceof Error)) {
-    return "Impossible d'ouvrir le dossier.";
+    return "Impossible d’ouvrir le dossier.";
   }
 
   switch (error.message) {
-    case 'CONTRACT_ID_REQUIRED':
-      return 'Le contrat est obligatoire.';
-    case 'CONTRACT_NOT_FOUND':
-      return 'Le contrat est introuvable.';
-    case 'CASE_ALREADY_EXISTS':
-      return 'Un dossier a déjà été ouvert pour ce contrat.';
-    case 'PERSON_ALREADY_HAS_OPEN_CASE':
-      return 'Cette personne possède déjà un dossier en cours.';
-    case 'INTERVIEW_NOT_FOUND':
-      return "L'entretien lié au contrat est introuvable.";
-    case 'REQUEST_NOT_FOUND':
-      return 'La demande liée au contrat est introuvable.';
-    case 'USER_ID_REQUIRED':
-      return 'Votre profil utilisateur est introuvable.';
+    case "FIRST_INTERVIEW_ACTIVITY_ID_REQUIRED":
+      return "Le premier entretien est obligatoire.";
+
+    case "FIRST_INTERVIEW_NOT_FOUND":
+      return "Le premier entretien est introuvable.";
+
+    case "ACTIVITY_IS_NOT_FIRST_INTERVIEW":
+      return "Cette activité n’est pas un premier entretien.";
+
+    case "FIRST_INTERVIEW_NOT_COMPLETED":
+      return "Le premier entretien doit être réalisé avant l’ouverture du dossier.";
+
+    case "FIRST_INTERVIEW_ALREADY_LINKED":
+      return "Ce premier entretien est déjà lié à un dossier.";
+
+    case "PERSON_ALREADY_HAS_OPEN_CASE":
+      return "Cette personne possède déjà un dossier ouvert.";
+
+    case "USER_ID_REQUIRED":
+      return "Votre profil utilisateur est introuvable.";
+
     default:
-      return "Impossible d'ouvrir le dossier.";
+      return "Impossible d’ouvrir le dossier.";
   }
 }
 
 export default function CaseFormScreen() {
-  const { contractId } = useLocalSearchParams<{
-    contractId?: string;
+  const { firstInterviewActivityId } = useLocalSearchParams<{
+    firstInterviewActivityId?: string;
   }>();
+
   const { profile } = useAuth();
 
-  const [contract, setContract] =
-    useState<Contract | null>(null);
-  const [isLoading, setIsLoading] =
-    useState(true);
-  const [isSaving, setIsSaving] =
-    useState(false);
+  const [firstInterview, setFirstInterview] = useState<Activity | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [isSaving, setIsSaving] = useState(false);
 
   const isSubmittingRef = useRef(false);
 
-  const loadContract = useCallback(async () => {
-    const normalizedContractId =
-      contractId?.trim();
+  const loadFirstInterview = useCallback(async (): Promise<void> => {
+    const activityId = firstInterviewActivityId?.trim();
 
-    if (!normalizedContractId) {
-      Alert.alert(
-        'Erreur',
-        "Le contrat signé n'a pas été indiqué."
-      );
+    if (!activityId) {
+      showMessage("Erreur", "Le premier entretien n’a pas été indiqué.");
+
       router.back();
       return;
     }
@@ -87,207 +97,219 @@ export default function CaseFormScreen() {
     try {
       setIsLoading(true);
 
-      const [loadedContract, existingCase] =
-        await Promise.all([
-          getContract(normalizedContractId),
-          getCaseByContractId(normalizedContractId),
-        ]);
+      const loadedActivity = await getActivityById(activityId);
 
-      if (!loadedContract) {
-        Alert.alert(
-          'Erreur',
-          'Le contrat est introuvable.'
-        );
+      if (!loadedActivity) {
+        showMessage("Erreur", "Le premier entretien est introuvable.");
+
         router.back();
         return;
       }
 
-      if (existingCase) {
-        router.replace({
-          pathname: '/cases/[id]',
-          params: { id: existingCase.id },
-        });
+      if (loadedActivity.type !== "first_interview") {
+        showMessage("Erreur", "Cette activité n’est pas un premier entretien.");
+
+        router.back();
         return;
       }
 
-      setContract(loadedContract);
-    } catch (error) {
-      console.error(
-        'Erreur lors du chargement du contrat :',
-        error
+      if (loadedActivity.status !== "completed") {
+        showMessage(
+          "Entretien non réalisé",
+          "Le premier entretien doit être réalisé avant l’ouverture du dossier.",
+        );
+
+        router.back();
+        return;
+      }
+
+      if (loadedActivity.caseId) {
+        router.replace({
+          pathname: "/cases/[id]",
+          params: {
+            id: loadedActivity.caseId,
+          },
+        });
+
+        return;
+      }
+
+      const existingOpenCase = await getOpenCaseByPersonId(
+        loadedActivity.personId,
       );
 
-      Alert.alert(
-        'Erreur',
-        'Impossible de préparer l’ouverture du dossier.'
-      );
+      if (existingOpenCase) {
+        router.replace({
+          pathname: "/cases/[id]",
+          params: {
+            id: existingOpenCase.id,
+          },
+        });
+
+        return;
+      }
+
+      setFirstInterview(loadedActivity);
+    } catch (error) {
+      console.error("Erreur lors de la préparation du dossier :", error);
+
+      showMessage("Erreur", "Impossible de préparer l’ouverture du dossier.");
+
       router.back();
     } finally {
       setIsLoading(false);
     }
-  }, [contractId]);
+  }, [firstInterviewActivityId]);
 
   useEffect(() => {
-    void loadContract();
-  }, [loadContract]);
+    void loadFirstInterview();
+  }, [loadFirstInterview]);
 
-  async function handleSave() {
-    if (
-      isSubmittingRef.current ||
-      !contract
-    ) {
+  async function handleSave(): Promise<void> {
+    if (isSubmittingRef.current || !firstInterview) {
       return;
     }
 
     if (!profile) {
-      Alert.alert(
-        'Erreur',
-        'Votre profil utilisateur est introuvable.'
-      );
+      showMessage("Erreur", "Votre profil utilisateur est introuvable.");
+
       return;
     }
 
-    isSubmittingRef.current = true;
-    setIsSaving(true);
-
     try {
-      const caseId = await createCase({
-        contractId: contract.id,
-        interviewId: contract.interviewId,
-        appointmentId: contract.appointmentId,
-        requestId: contract.requestId,
-        personId: contract.personId,
-        personName: contract.personName,
-        counselorId: contract.counselorId,
-        counselorName: contract.counselorName,
+      isSubmittingRef.current = true;
+      setIsSaving(true);
+
+      const caseId = await createCaseFromFirstInterview({
+        firstInterviewActivityId: firstInterview.id,
+
         createdBy: profile.uid,
+
         createdByName: profile.displayName,
       });
 
-      Alert.alert(
-        'Dossier ouvert',
-        'Le dossier d’accompagnement a été créé avec succès.'
+      showMessage(
+        "Dossier ouvert",
+        "Le dossier d’accompagnement a été créé avec succès.",
       );
 
       router.replace({
-        pathname: '/cases/[id]',
-        params: { id: caseId },
+        pathname: "/cases/[id]",
+        params: {
+          id: caseId,
+        },
       });
     } catch (error) {
-      console.error(
-        'Erreur lors de la création du dossier :',
-        error
-      );
+      console.error("Erreur lors de la création du dossier :", error);
 
-      Alert.alert(
-        'Ouverture impossible',
-        getCreationErrorMessage(error)
-      );
+      showMessage("Ouverture impossible", getCreationErrorMessage(error));
 
       isSubmittingRef.current = false;
+    } finally {
       setIsSaving(false);
     }
   }
 
   if (isLoading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: COLORS.light,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <ActivityIndicator />
+      <SafeAreaView style={styles.loading}>
+        <ActivityIndicator size="large" />
+
+        <Text style={styles.loadingText}>Préparation du dossier...</Text>
       </SafeAreaView>
     );
   }
 
-  if (!contract) {
+  if (!firstInterview) {
     return null;
   }
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: COLORS.light,
-      }}
-    >
-      <ScrollView
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: 40,
-        }}
+    <FormPage>
+      <FormHeader
+        title="Ouvrir le dossier"
+        description="Le premier entretien a été réalisé. Confirmez l’ouverture du dossier d’accompagnement."
+      />
+
+      <FormCard
+        title="Informations du premier entretien"
+        description="Vérifiez les informations avant de créer le dossier."
       >
-        <Text
-          style={{
-            fontSize: 26,
-            fontWeight: '700',
-            color: COLORS.text,
-            marginBottom: 6,
-          }}
-        >
-          Ouvrir le dossier
-        </Text>
+        <Info label="Personne" value={firstInterview.personName} />
 
-        <Text
-          style={{
-            color: COLORS.muted,
-            lineHeight: 20,
-            marginBottom: 20,
-          }}
-        >
-          Le contrat papier a été signé. Confirmez
-          maintenant l’ouverture du dossier
-          d’accompagnement.
-        </Text>
+        <Info label="Conseiller" value={firstInterview.counselorName} />
 
-        <View
-          style={{
-            backgroundColor: 'white',
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <Text
-            style={{
-              fontWeight: '700',
-              fontSize: 18,
-              marginBottom: 12,
-            }}
-          >
-            Informations
-          </Text>
+        <Info label="Premier entretien" value={firstInterview.title} />
 
-          <Text>
-            Contrat : {contract.contractNumber}
-          </Text>
-          <Text style={{ marginTop: 8 }}>
-            Personne : {contract.personName}
-          </Text>
-          <Text style={{ marginTop: 8 }}>
-            Conseiller : {contract.counselorName}
-          </Text>
-        </View>
+        <Info label="Compte rendu" value={firstInterview.result} />
+      </FormCard>
 
-        <View style={{ marginTop: 24, gap: 12 }}>
-          <AppButton
-            title={
-              isSaving
-                ? 'Ouverture du dossier...'
-                : 'Confirmer l’ouverture du dossier'
-            }
-            onPress={handleSave}
-          />
-
+      <FormActions>
+        <View style={styles.actionButton}>
           <AppButton
             title="Annuler"
+            disabled={isSaving}
             onPress={() => router.back()}
           />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <View style={styles.actionButton}>
+          <AppButton
+            title={
+              isSaving ? "Ouverture du dossier..." : "Confirmer l’ouverture"
+            }
+            disabled={isSaving}
+            onPress={() => {
+              void handleSave();
+            }}
+          />
+        </View>
+      </FormActions>
+    </FormPage>
   );
 }
+
+function Info({ label, value }: { label: string; value?: string }) {
+  return (
+    <View style={styles.info}>
+      <Text style={styles.infoLabel}>{label}</Text>
+
+      <Text style={styles.infoValue}>{value || "Non renseigné"}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  loading: {
+    alignItems: "center",
+    backgroundColor: COLORS.light,
+    flex: 1,
+    justifyContent: "center",
+    padding: 24,
+  },
+
+  loadingText: {
+    color: COLORS.muted,
+    marginTop: 12,
+  },
+
+  info: {
+    gap: 4,
+  },
+
+  infoLabel: {
+    color: COLORS.muted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  infoValue: {
+    color: COLORS.text,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+
+  actionButton: {
+    minWidth: 180,
+  },
+});

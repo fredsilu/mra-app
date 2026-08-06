@@ -1,14 +1,8 @@
 //app/(app)/interviews/[id].tsx
+// app/(app)/interviews/[id].tsx
 
-import {
-  router,
-  useLocalSearchParams,
-} from 'expo-router';
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,213 +11,202 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { AppButton } from '@/components/ui/AppButton';
-import { AppInput } from '@/components/ui/AppInput';
-import { COLORS } from '@/constants/theme';
+import { AppButton } from "@/components/ui/AppButton";
+import { AppInput } from "@/components/ui/AppInput";
+import { COLORS } from "@/constants/theme";
 import {
   getInterview,
   updateInterview,
-} from '@/features/interviews/interview.service';
-import type {
-  Interview,
-} from '@/features/interviews/interview.types';
+} from "@/features/interviews/interview.service";
+import type { Interview } from "@/features/interviews/interview.types";
 
-function formatDate(
-  value: { toDate: () => Date }
-): string {
-  return value.toDate().toLocaleString(
-    'fr-FR',
-    {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }
-  );
+type InterviewWithCaseLinks = Interview & {
+  contractId?: string;
+  caseId?: string;
+};
+
+function formatDate(value: { toDate: () => Date }): string {
+  return value.toDate().toLocaleString("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 export default function InterviewDetailsScreen() {
-  const { id } =
-    useLocalSearchParams<{
-      id?: string;
-    }>();
+  const { id } = useLocalSearchParams<{
+    id?: string;
+  }>();
 
-  const [
-    interview,
-    setInterview,
-  ] = useState<Interview | null>(null);
+  const [interview, setInterview] = useState<InterviewWithCaseLinks | null>(
+    null,
+  );
 
-  const [
-    summary,
-    setSummary,
-  ] = useState('');
+  const [summary, setSummary] = useState("");
 
-  const [
-    observations,
-    setObservations,
-  ] = useState('');
+  const [observations, setObservations] = useState("");
 
-  const [
-    recommendations,
-    setRecommendations,
-  ] = useState('');
+  const [recommendations, setRecommendations] = useState("");
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [
-    isSaving,
-    setIsSaving,
-  ] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const loadInterview =
-    useCallback(async (): Promise<void> => {
-      if (!id) {
+  const loadInterview = useCallback(async (): Promise<void> => {
+    if (!id) {
+      router.back();
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const result = await getInterview(id);
+
+      if (!result) {
+        Alert.alert("Erreur", "Entretien introuvable.");
+
         router.back();
         return;
       }
 
-      try {
-        setIsLoading(true);
+      const loadedInterview = result as InterviewWithCaseLinks;
 
-        const result =
-          await getInterview(id);
+      setInterview(loadedInterview);
 
-        if (!result) {
-          Alert.alert(
-            'Erreur',
-            'Entretien introuvable.'
-          );
+      setSummary(loadedInterview.summary ?? "");
 
-          router.back();
-          return;
-        }
+      setObservations(loadedInterview.observations ?? "");
 
-        setInterview(result);
-        setSummary(
-          result.summary ?? ''
-        );
-        setObservations(
-          result.observations ?? ''
-        );
-        setRecommendations(
-          result.recommendations ?? ''
-        );
-      } catch (error) {
-        console.error(
-          'Erreur lors du chargement de l’entretien :',
-          error
-        );
+      setRecommendations(loadedInterview.recommendations ?? "");
+    } catch (error) {
+      console.error("Erreur lors du chargement de l’entretien :", error);
 
-        Alert.alert(
-          'Erreur',
-          'Impossible de charger cet entretien.'
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }, [id]);
+      Alert.alert("Erreur", "Impossible de charger cet entretien.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    loadInterview();
+    void loadInterview();
   }, [loadInterview]);
 
-  async function handleSave(): Promise<void> {
-    if (
-      !id ||
-      isSaving
-    ) {
-      return;
+  async function saveInterview(): Promise<boolean> {
+    if (!id || isSaving) {
+      return false;
     }
 
     if (!summary.trim()) {
-      Alert.alert(
-        'Validation',
-        'Le résumé de l’entretien est obligatoire.'
-      );
+      Alert.alert("Validation", "Le résumé de l’entretien est obligatoire.");
 
-      return;
+      return false;
     }
 
     try {
       setIsSaving(true);
 
-      await updateInterview(
-        id,
-        {
-          summary:
-            summary.trim(),
-
-          observations:
-            observations.trim(),
-
-          recommendations:
-            recommendations.trim(),
-        }
-      );
+      await updateInterview(id, {
+        summary: summary.trim(),
+        observations: observations.trim(),
+        recommendations: recommendations.trim(),
+      });
 
       await loadInterview();
 
-      Alert.alert(
-        'Succès',
-        'L’entretien a été enregistré avec succès.'
-      );
+      return true;
     } catch (error) {
-      console.error(
-        'Erreur lors de l’enregistrement de l’entretien :',
-        error
-      );
+      console.error("Erreur lors de l’enregistrement de l’entretien :", error);
 
-      Alert.alert(
-        'Erreur',
-        'Impossible d’enregistrer cet entretien.'
-      );
+      Alert.alert("Erreur", "Impossible d’enregistrer cet entretien.");
+
+      return false;
     } finally {
       setIsSaving(false);
     }
   }
 
-  function openAppointment(): void {
-    if (!interview?.appointmentId) {
+  async function handleSave(): Promise<void> {
+    const saved = await saveInterview();
+
+    if (saved) {
+      Alert.alert("Succès", "L’entretien a été enregistré avec succès.");
+    }
+  }
+
+  async function openOrCreateCase(): Promise<void> {
+    if (!interview) {
+      return;
+    }
+
+    if (interview.caseId) {
+      router.push({
+        pathname: "/cases/[id]",
+        params: {
+          id: interview.caseId,
+        },
+      });
+
+      return;
+    }
+
+    if (!summary.trim()) {
       Alert.alert(
-        'Information',
-        'Cet entretien n’est associé à aucun rendez-vous.'
+        "Résumé obligatoire",
+        "Enregistrez le résumé de l’entretien avant d’ouvrir un dossier.",
+      );
+
+      return;
+    }
+
+    const saved = await saveInterview();
+
+    if (!saved) {
+      return;
+    }
+
+    if (!interview.contractId) {
+      Alert.alert(
+        "Contrat manquant",
+        "Aucun contrat signé n’est lié à cet entretien. Le dossier ne peut pas encore être ouvert.",
       );
 
       return;
     }
 
     router.push({
-      pathname:
-        '/appointments/[id]',
+      pathname: "/cases/form",
       params: {
-        id:
-          interview.appointmentId,
+        contractId: interview.contractId,
+      },
+    });
+  }
+
+  function openAppointment(): void {
+    if (!interview?.appointmentId) {
+      Alert.alert(
+        "Information",
+        "Cet entretien n’est associé à aucun rendez-vous.",
+      );
+
+      return;
+    }
+
+    router.push({
+      pathname: "/appointments/[id]",
+      params: {
+        id: interview.appointmentId,
       },
     });
   }
 
   if (isLoading) {
     return (
-      <SafeAreaView
-        style={
-          styles.loadingContainer
-        }
-      >
-        <ActivityIndicator
-          size="large"
-          color={COLORS.text}
-        />
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.text} />
 
-        <Text
-          style={
-            styles.loadingText
-          }
-        >
-          Chargement de l’entretien...
-        </Text>
+        <Text style={styles.loadingText}>Chargement de l’entretien...</Text>
       </SafeAreaView>
     );
   }
@@ -233,164 +216,95 @@ export default function InterviewDetailsScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={styles.safeArea}
-    >
+    <SafeAreaView style={styles.safeArea}>
       <ScrollView
-        contentContainerStyle={
-          styles.content
-        }
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <View
-          style={styles.header}
-        >
-          <Text
-            style={styles.title}
-          >
-            Entretien
-          </Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Entretien</Text>
 
-          <Text
-            style={styles.number}
-          >
-            {interview.interviewNumber}
-          </Text>
+          <Text style={styles.number}>{interview.interviewNumber}</Text>
 
-          <Text
-            style={styles.createdAt}
-          >
-            Créé le :{' '}
-            {formatDate(
-              interview.createdAt
-            )}
+          <Text style={styles.createdAt}>
+            Créé le : {formatDate(interview.createdAt)}
           </Text>
         </View>
 
-        <View
-          style={
-            styles.personCard
-          }
-        >
-          <Text
-            style={
-              styles.personName
-            }
-          >
-            {interview.personName}
-          </Text>
+        <View style={styles.personCard}>
+          <Text style={styles.personName}>{interview.personName}</Text>
 
-          <Text
-            style={
-              styles.secondaryText
-            }
-          >
-            Conseiller :{' '}
-            {interview.counselorName}
+          <Text style={styles.secondaryText}>
+            Conseiller : {interview.counselorName}
           </Text>
         </View>
 
-        <View
-          style={styles.form}
-        >
-          <View
-            style={styles.field}
-          >
-            <Text
-              style={styles.label}
-            >
-              Résumé de l’entretien *
-            </Text>
+        <View style={styles.form}>
+          <View style={styles.field}>
+            <Text style={styles.label}>Résumé de l’entretien *</Text>
 
             <AppInput
               placeholder="Résumez les principaux éléments de l’entretien"
               value={summary}
-              onChangeText={
-                setSummary
-              }
+              onChangeText={setSummary}
               multiline
               numberOfLines={6}
               textAlignVertical="top"
+              editable={!isSaving}
             />
           </View>
 
-          <View
-            style={styles.field}
-          >
-            <Text
-              style={styles.label}
-            >
-              Observations
-            </Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>Observations</Text>
 
             <AppInput
               placeholder="Ajoutez les observations utiles"
-              value={
-                observations
-              }
-              onChangeText={
-                setObservations
-              }
+              value={observations}
+              onChangeText={setObservations}
               multiline
               numberOfLines={6}
               textAlignVertical="top"
+              editable={!isSaving}
             />
           </View>
 
-          <View
-            style={styles.field}
-          >
-            <Text
-              style={styles.label}
-            >
-              Recommandations
-            </Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>Recommandations</Text>
 
             <AppInput
               placeholder="Ajoutez les recommandations proposées"
-              value={
-                recommendations
-              }
-              onChangeText={
-                setRecommendations
-              }
+              value={recommendations}
+              onChangeText={setRecommendations}
               multiline
               numberOfLines={6}
               textAlignVertical="top"
+              editable={!isSaving}
             />
           </View>
 
-          <View
-            style={
-              styles.actions
-            }
-          >
+          <View style={styles.actions}>
             <AppButton
-              title={
-                isSaving
-                  ? 'Enregistrement...'
-                  : 'Enregistrer'
-              }
+              title={isSaving ? "Enregistrement..." : "Enregistrer"}
               disabled={isSaving}
-              onPress={
-                handleSave
-              }
+              onPress={handleSave}
+            />
+
+            <AppButton
+              title={interview.caseId ? "Voir le dossier" : "Créer le dossier"}
+              disabled={isSaving}
+              onPress={openOrCreateCase}
             />
 
             <AppButton
               title="Voir le rendez-vous"
               disabled={isSaving}
-              onPress={
-                openAppointment
-              }
+              onPress={openAppointment}
             />
 
             <AppButton
               title="Retour"
               disabled={isSaving}
-              onPress={() =>
-                router.back()
-              }
+              onPress={() => router.back()}
             />
           </View>
         </View>
@@ -399,99 +313,93 @@ export default function InterviewDetailsScreen() {
   );
 }
 
-const styles =
-  StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor:
-        COLORS.light,
-    },
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.light,
+  },
 
-    loadingContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent:
-        'center',
-      backgroundColor:
-        COLORS.light,
-      padding: 24,
-    },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.light,
+    padding: 24,
+  },
 
-    loadingText: {
-      marginTop: 12,
-      color: COLORS.muted,
-      fontSize: 15,
-    },
+  loadingText: {
+    marginTop: 12,
+    color: COLORS.muted,
+    fontSize: 15,
+  },
 
-    content: {
-      width: '100%',
-      maxWidth: 900,
-      alignSelf: 'center',
-      padding: 16,
-      paddingBottom: 50,
-    },
+  content: {
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    padding: 16,
+    paddingBottom: 50,
+  },
 
-    header: {
-      marginBottom: 18,
-    },
+  header: {
+    marginBottom: 18,
+  },
 
-    title: {
-      fontSize: 26,
-      fontWeight: '700',
-      color: COLORS.text,
-    },
+  title: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: COLORS.text,
+  },
 
-    number: {
-      marginTop: 6,
-      color: COLORS.muted,
-      fontSize: 14,
-    },
+  number: {
+    marginTop: 6,
+    color: COLORS.muted,
+    fontSize: 14,
+  },
 
-    createdAt: {
-      marginTop: 4,
-      color: COLORS.muted,
-      fontSize: 14,
-    },
+  createdAt: {
+    marginTop: 4,
+    color: COLORS.muted,
+    fontSize: 14,
+  },
 
-    personCard: {
-      padding: 18,
-      marginBottom: 20,
-      borderWidth: 1,
-      borderColor:
-        COLORS.border,
-      borderRadius: 14,
-      backgroundColor:
-        COLORS.white,
-    },
+  personCard: {
+    padding: 18,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    backgroundColor: COLORS.white,
+  },
 
-    personName: {
-      color: COLORS.text,
-      fontSize: 18,
-      fontWeight: '700',
-    },
+  personName: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: "700",
+  },
 
-    secondaryText: {
-      marginTop: 6,
-      color: COLORS.muted,
-      fontSize: 14,
-    },
+  secondaryText: {
+    marginTop: 6,
+    color: COLORS.muted,
+    fontSize: 14,
+  },
 
-    form: {
-      gap: 18,
-    },
+  form: {
+    gap: 18,
+  },
 
-    field: {
-      gap: 7,
-    },
+  field: {
+    gap: 7,
+  },
 
-    label: {
-      color: COLORS.text,
-      fontSize: 14,
-      fontWeight: '600',
-    },
+  label: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "600",
+  },
 
-    actions: {
-      gap: 12,
-      marginTop: 6,
-    },
-  });
+  actions: {
+    gap: 12,
+    marginTop: 6,
+  },
+});

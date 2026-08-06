@@ -1,10 +1,10 @@
-//src/features/users/user.types.ts
+// src/features/users/user.types.ts
+
 export type UserRole =
-  | 'responsable'
-  | 'adjoint'
-  | 'secretaire'
-  | 'conseiller'
-  | 'logistique';
+  | "responsable"
+  | "adjoint"
+  | "secretaire"
+  | "conseiller";
 
 export type UserProfile = {
   uid: string;

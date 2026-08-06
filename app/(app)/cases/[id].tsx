@@ -1,44 +1,60 @@
 // app/(app)/cases/[id].tsx
+// app/(app)/cases/[id].tsx
 
-import {
-  router,
-  useLocalSearchParams,
-} from 'expo-router';
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   SafeAreaView,
   ScrollView,
+  StyleSheet,
   Text,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { AppButton } from '@/components/ui/AppButton';
-import { COLORS } from '@/constants/theme';
-import { getCase } from '@/features/cases/case.service';
 import {
-  CASE_STATUS_LABELS,
-  type Case,
-} from '@/features/cases/case.types';
+  CaseActions,
+  CaseActivitiesCard,
+  CaseClosureCard,
+  CaseHeader,
+  CaseInformationCard,
+} from "@/features/cases";
+import { AppButton } from "@/components/ui/AppButton";
+import { AppInput } from "@/components/ui/AppInput";
+import { COLORS } from "@/constants/theme";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  ActivityCard,
+  getActivitiesByCase,
+  type Activity,
+} from "@/features/activities";
+import { closeCase, getCase } from "@/features/cases/case.service";
+import { CASE_STATUS_LABELS, type Case } from "@/features/cases/case.types";
 
-function formatDate(
-  value?: Case['openedAt']
-): string {
+function showMessage(title: string, message: string): void {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+
+  Alert.alert(title, message);
+}
+
+function formatDate(value?: { toDate: () => Date }): string {
   if (!value) {
-    return '-';
+    return "Non renseignée";
   }
 
   try {
-    return value
-      .toDate()
-      .toLocaleDateString('fr-FR');
+    return value.toDate().toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
   } catch {
-    return '-';
+    return "Non renseignée";
   }
 }
 
@@ -47,249 +63,224 @@ export default function CaseDetailScreen() {
     id?: string;
   }>();
 
-  const [helpCase, setHelpCase] =
-    useState<Case | null>(null);
-  const [loading, setLoading] =
-    useState(true);
+  const { profile } = useAuth();
 
-  const loadCase = useCallback(async () => {
+  const [helpCase, setHelpCase] = useState<Case | null>(null);
+
+  const [activities, setActivities] = useState<Activity[]>([]);
+
+  const [closureReason, setClosureReason] = useState("");
+
+  const [closureSummary, setClosureSummary] = useState("");
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [isClosing, setIsClosing] = useState(false);
+
+  const loadData = useCallback(async () => {
     const caseId = id?.trim();
 
     if (!caseId) {
-      Alert.alert(
-        'Erreur',
-        'Identifiant du dossier manquant.'
-      );
-      router.back();
+      setIsLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      setIsLoading(true);
 
-      const loadedCase = await getCase(caseId);
-
-      if (!loadedCase) {
-        Alert.alert(
-          'Erreur',
-          'Dossier introuvable.'
-        );
-        router.back();
-        return;
-      }
+      const [loadedCase, loadedActivities] = await Promise.all([
+        getCase(caseId),
+        getActivitiesByCase(caseId),
+      ]);
 
       setHelpCase(loadedCase);
-    } catch (error) {
-      console.error(error);
+      setActivities(loadedActivities);
 
-      Alert.alert(
-        'Erreur',
-        'Impossible de charger le dossier.'
-      );
-      router.back();
+      if (loadedCase) {
+        setClosureReason(loadedCase.closureReason ?? "");
+
+        setClosureSummary(loadedCase.closureSummary ?? "");
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement du dossier :", error);
+
+      showMessage("Erreur", "Impossible de charger le dossier.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [id]);
 
-  useEffect(() => {
-    void loadCase();
-  }, [loadCase]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadData();
+    }, [loadData]),
+  );
 
-  if (loading) {
+  async function handleCloseCase(): Promise<void> {
+    if (!helpCase || !profile || isClosing) {
+      return;
+    }
+
+    const normalizedReason = closureReason.trim();
+
+    const normalizedSummary = closureSummary.trim();
+
+    if (!normalizedReason) {
+      showMessage("Validation", "Le motif de clôture est obligatoire.");
+      return;
+    }
+
+    if (!normalizedSummary) {
+      showMessage(
+        "Validation",
+        "Le bilan de l’accompagnement est obligatoire.",
+      );
+      return;
+    }
+
+    const confirmed =
+      Platform.OS === "web"
+        ? window.confirm("Confirmez-vous la clôture définitive de ce dossier ?")
+        : true;
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsClosing(true);
+
+      await closeCase(helpCase.id, {
+        closureReason: normalizedReason,
+        closureSummary: normalizedSummary,
+        updatedBy: profile.uid,
+        updatedByName: profile.displayName,
+      });
+
+      await loadData();
+
+      showMessage("Dossier clôturé", "Le dossier a été clôturé avec succès.");
+    } catch (error) {
+      console.error("Erreur lors de la clôture du dossier :", error);
+
+      showMessage("Erreur", "Impossible de clôturer le dossier.");
+    } finally {
+      setIsClosing(false);
+    }
+  }
+
+  if (isLoading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: COLORS.light,
-        }}
-      >
-        <ActivityIndicator />
+      <SafeAreaView style={styles.loading}>
+        <ActivityIndicator size="large" />
+
+        <Text style={styles.loadingText}>Chargement du dossier...</Text>
       </SafeAreaView>
     );
   }
 
   if (!helpCase) {
-    return null;
+    return (
+      <SafeAreaView style={styles.loading}>
+        <Text style={styles.notFound}>Dossier introuvable.</Text>
+
+        <AppButton title="Retour" onPress={() => router.back()} />
+      </SafeAreaView>
+    );
   }
 
+  const isClosed = helpCase.status === "closed";
+
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: COLORS.light,
-      }}
-    >
-      <ScrollView
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: 40,
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '700',
-            color: COLORS.text,
-          }}
-        >
-          {helpCase.caseNumber}
-        </Text>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <CaseHeader helpCase={helpCase} />
 
-        <Text
-          style={{
-            marginTop: 4,
-            color: COLORS.muted,
-          }}
-        >
-          Fiche du dossier d’accompagnement
-        </Text>
+        <CaseInformationCard helpCase={helpCase} />
 
-        <View
-          style={{
-            marginTop: 24,
-            backgroundColor: 'white',
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <Text
-            style={{
-              fontWeight: '700',
-              fontSize: 18,
-              marginBottom: 12,
+        <CaseActivitiesCard helpCase={helpCase} activities={activities} />
+
+        {!isClosed ? (
+          <CaseClosureCard
+            closureReason={closureReason}
+            closureSummary={closureSummary}
+            isClosing={isClosing}
+            onReasonChange={setClosureReason}
+            onSummaryChange={setClosureSummary}
+            onClose={() => {
+              void handleCloseCase();
             }}
-          >
-            Personne accompagnée
-          </Text>
-
-          <Text>Nom : {helpCase.personName}</Text>
-          <Text style={{ marginTop: 6 }}>
-            Identifiant : {helpCase.personId}
-          </Text>
-        </View>
-
-        <View
-          style={{
-            marginTop: 20,
-            backgroundColor: 'white',
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <Text
-            style={{
-              fontWeight: '700',
-              fontSize: 18,
-              marginBottom: 12,
-            }}
-          >
-            Dossier
-          </Text>
-
-          <Text>
-            Statut : {CASE_STATUS_LABELS[helpCase.status]}
-          </Text>
-
-          <Text style={{ marginTop: 6 }}>
-            Conseiller : {helpCase.counselorName}
-          </Text>
-
-          <Text style={{ marginTop: 6 }}>
-            Ouvert le : {formatDate(helpCase.openedAt)}
-          </Text>
-
-          {helpCase.status === 'suspended' ? (
-            <>
-              <Text style={{ marginTop: 6 }}>
-                Suspendu le : {formatDate(helpCase.suspendedAt)}
-              </Text>
-              <Text style={{ marginTop: 6 }}>
-                Motif : {helpCase.suspensionReason ?? '-'}
-              </Text>
-            </>
-          ) : null}
-
-          {helpCase.status === 'closed' ? (
-            <>
-              <Text style={{ marginTop: 6 }}>
-                Clôturé le : {formatDate(helpCase.closedAt)}
-              </Text>
-              <Text style={{ marginTop: 6 }}>
-                Motif : {helpCase.closureReason ?? '-'}
-              </Text>
-            </>
-          ) : null}
-        </View>
-
-        <View
-          style={{
-            marginTop: 20,
-            backgroundColor: 'white',
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <Text
-            style={{
-              fontWeight: '700',
-              fontSize: 18,
-              marginBottom: 12,
-            }}
-          >
-            Origine du dossier
-          </Text>
-
-          <Text>Contrat : {helpCase.contractId}</Text>
-          <Text style={{ marginTop: 6 }}>
-            Entretien : {helpCase.interviewId}
-          </Text>
-          <Text style={{ marginTop: 6 }}>
-            Rendez-vous : {helpCase.appointmentId}
-          </Text>
-          <Text style={{ marginTop: 6 }}>
-            Demande : {helpCase.requestId}
-          </Text>
-        </View>
-
-        <View
-          style={{
-            marginTop: 30,
-            gap: 12,
-          }}
-        >
-          <AppButton
-            title="Voir les activités"
-            onPress={() =>
-              router.push({
-                pathname: '/(app)/case-activities',
-                params: {
-                  caseId: helpCase.id,
-                },
-              })
-            }
           />
+        ) : null}
 
-          <AppButton
-            title="Voir la chronologie"
-            onPress={() =>
-              router.push({
-                pathname: '/(app)/cases/timeline',
-                params: {
-                  caseId: helpCase.id,
-                },
-              })
-            }
-          />
-
-          <AppButton
-            title="Retour"
-            onPress={() => router.back()}
-          />
-        </View>
+        <CaseActions personId={helpCase.personId} />
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+function Info({ label, value }: { label: string; value?: string }) {
+  return (
+    <View style={styles.info}>
+      <Text style={styles.infoLabel}>{label}</Text>
+
+      <Text style={styles.infoValue}>{value || "Non renseigné"}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.light,
+  },
+
+  loading: {
+    alignItems: "center",
+    backgroundColor: COLORS.light,
+    flex: 1,
+    gap: 14,
+    justifyContent: "center",
+    padding: 24,
+  },
+
+  loadingText: {
+    color: COLORS.muted,
+  },
+
+  notFound: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+
+  content: {
+    alignSelf: "center",
+    maxWidth: 900,
+    padding: 16,
+    paddingBottom: 50,
+    width: "100%",
+  },
+
+  cardTitle: {
+    color: COLORS.text,
+    fontSize: 19,
+    fontWeight: "800",
+  },
+
+  info: {
+    gap: 4,
+  },
+
+  infoLabel: {
+    color: COLORS.muted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  infoValue: {
+    color: COLORS.text,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+});

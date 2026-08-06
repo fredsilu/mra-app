@@ -1,219 +1,149 @@
 // app/(app)/cases/index.tsx
-
-import {
-  router,
-  useFocusEffect,
-} from 'expo-router';
-import {
-  useCallback,
-  useState,
-} from 'react';
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
-  Pressable,
   SafeAreaView,
+  StyleSheet,
   Text,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { COLORS } from '@/constants/theme';
-import { getCases } from '@/features/cases/case.service';
+import { COLORS } from "@/constants/theme";
+import { CasesHeader } from "@/features/cases/components/CasesHeader";
+import { CasesList } from "@/features/cases/components/CasesList";
+import { CasesStatistics } from "@/features/cases/components/CasesStatistics";
 import {
-  CASE_STATUS_LABELS,
-  type Case,
-  type CaseStatus,
-} from '@/features/cases/case.types';
-
-function statusColor(status: CaseStatus): string {
-  switch (status) {
-    case 'active':
-      return '#2E7D32';
-    case 'suspended':
-      return '#F57C00';
-    case 'closed':
-      return '#616161';
-  }
-}
-
-function formatDate(
-  value: Case['openedAt']
-): string {
-  try {
-    return value
-      .toDate()
-      .toLocaleDateString('fr-FR');
-  } catch {
-    return '-';
-  }
-}
+  CasesToolbar,
+  type CaseFilter,
+} from "@/features/cases/components/CasesToolbar";
+import { getCases } from "@/features/cases/case.service";
+import type { Case } from "@/features/cases/case.types";
 
 export default function CasesScreen() {
   const [cases, setCases] = useState<Case[]>([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<CaseFilter>("all");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (refreshOnly = false) => {
     try {
-      setLoading(true);
+      if (refreshOnly) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
       setCases(await getCases());
     } catch (error) {
-      console.error(
-        'Erreur lors du chargement des dossiers :',
-        error
-      );
+      console.error("Erreur lors du chargement des dossiers :", error);
 
-      Alert.alert(
-        'Erreur',
-        'Impossible de charger les dossiers.'
-      );
+      Alert.alert("Erreur", "Impossible de charger les dossiers.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       void loadData();
-    }, [loadData])
+    }, [loadData]),
   );
 
-  if (loading) {
+  const statistics = useMemo(
+    () => ({
+      total: cases.length,
+      active: cases.filter((item) => item.status === "active").length,
+      closed: cases.filter((item) => item.status === "closed").length,
+    }),
+    [cases],
+  );
+
+  const filteredCases = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return cases.filter((item) => {
+      const matchesFilter = filter === "all" || item.status === filter;
+
+      if (!matchesFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return (
+        item.caseNumber.toLowerCase().includes(normalizedSearch) ||
+        item.personName.toLowerCase().includes(normalizedSearch) ||
+        item.counselorName.toLowerCase().includes(normalizedSearch)
+      );
+    });
+  }, [cases, filter, search]);
+
+  if (loading && cases.length === 0) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: COLORS.light,
-        }}
-      >
-        <ActivityIndicator />
+      <SafeAreaView style={styles.loading}>
+        <ActivityIndicator size="large" />
+
+        <Text style={styles.loadingText}>Chargement des dossiers...</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: COLORS.light,
-      }}
-    >
-      <View
-        style={{
-          flex: 1,
-          padding: 16,
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 26,
-            fontWeight: '700',
-            color: COLORS.text,
-            marginBottom: 6,
-          }}
-        >
-          Dossiers de relation d’aide
-        </Text>
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.content}>
+        <CasesHeader />
 
-        <Text
-          style={{
-            color: COLORS.muted,
-            lineHeight: 20,
-            marginBottom: 20,
-          }}
-        >
-          Consultez les accompagnements ouverts,
-          suspendus ou clôturés.
-        </Text>
+        <CasesStatistics
+          total={statistics.total}
+          active={statistics.active}
+          closed={statistics.closed}
+        />
 
-        <FlatList
-          data={cases}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{
-            paddingBottom: 30,
-          }}
-          ListEmptyComponent={
-            <Text
-              style={{
-                textAlign: 'center',
-                marginTop: 40,
-                color: COLORS.muted,
-              }}
-            >
-              Aucun dossier d’accompagnement.
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <Pressable
-              style={{
-                backgroundColor: 'white',
-                borderRadius: 10,
-                padding: 14,
-                marginBottom: 12,
-                borderWidth: 1,
-                borderColor: '#ECECEC',
-              }}
-              onPress={() =>
-                router.push({
-                  pathname: '/cases/[id]',
-                  params: { id: item.id },
-                })
-              }
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: COLORS.muted,
-                  marginBottom: 4,
-                }}
-              >
-                {item.caseNumber || item.id}
-              </Text>
+        <CasesToolbar
+          search={search}
+          onSearchChange={setSearch}
+          filter={filter}
+          onFilterChange={setFilter}
+          resultCount={filteredCases.length}
+        />
 
-              <Text
-                style={{
-                  fontWeight: '700',
-                  fontSize: 16,
-                  color: COLORS.text,
-                }}
-              >
-                {item.personName}
-              </Text>
-
-              <Text
-                style={{
-                  marginTop: 6,
-                  color: COLORS.text,
-                }}
-              >
-                Conseiller : {item.counselorName}
-              </Text>
-
-              <Text
-                style={{
-                  marginTop: 8,
-                  color: statusColor(item.status),
-                  fontWeight: '600',
-                }}
-              >
-                Statut : {CASE_STATUS_LABELS[item.status]}
-              </Text>
-
-              <Text
-                style={{
-                  marginTop: 6,
-                  fontSize: 13,
-                  color: COLORS.muted,
-                }}
-              >
-                Ouvert le : {formatDate(item.openedAt)}
-              </Text>
-            </Pressable>
-          )}
+        <CasesList
+          cases={filteredCases}
+          refreshing={refreshing}
+          onRefresh={() => void loadData(true)}
+          search={search}
         />
       </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.light,
+  },
+
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+
+  loading: {
+    alignItems: "center",
+    backgroundColor: COLORS.light,
+    flex: 1,
+    gap: 12,
+    justifyContent: "center",
+  },
+
+  loadingText: {
+    color: COLORS.muted,
+  },
+});

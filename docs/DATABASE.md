@@ -17,12 +17,12 @@ Ce document décrit l'implémentation de la base de données du projet MRA.
 
 Il définit :
 
-* les collections Firestore ;
-* leurs responsabilités ;
-* les relations entre les données ;
-* les conventions de nommage ;
-* la stratégie de numérotation ;
-* l'organisation des documents dans Firebase Storage.
+- les collections Firestore ;
+- leurs responsabilités ;
+- les relations entre les données ;
+- les conventions de nommage ;
+- la stratégie de numérotation ;
+- l'organisation des documents dans Firebase Storage.
 
 Ce document complète **DATA_MODEL.md**, qui décrit le modèle métier.
 
@@ -32,9 +32,9 @@ Ce document complète **DATA_MODEL.md**, qui décrit le modèle métier.
 
 La base de données repose sur les services Firebase suivants :
 
-* **Cloud Firestore** : stockage des données métier
-* **Firebase Authentication** : authentification des utilisateurs
-* **Firebase Storage** : stockage des documents
+- **Cloud Firestore** : stockage des données métier
+- **Firebase Authentication** : authentification des utilisateurs
+- **Firebase Storage** : stockage des documents
 
 ---
 
@@ -64,10 +64,10 @@ Contient les informations permanentes d'une personne.
 
 Une personne peut avoir :
 
-* plusieurs demandes ;
-* plusieurs rendez-vous ;
-* plusieurs entretiens ;
-* plusieurs dossiers au cours de sa vie.
+- plusieurs demandes ;
+- plusieurs rendez-vous ;
+- plusieurs entretiens ;
+- plusieurs dossiers au cours de sa vie.
 
 ---
 
@@ -77,10 +77,10 @@ Contient les demandes de relation d'aide.
 
 Chaque demande :
 
-* appartient à une personne ;
-* peut être affectée à un conseiller ;
-* peut conduire à la création d'un dossier ;
-* peut également être clôturée sans ouverture de dossier.
+- appartient à une personne ;
+- peut être affectée à un conseiller ;
+- peut conduire à la création d'un dossier ;
+- peut également être clôturée sans ouverture de dossier.
 
 ---
 
@@ -102,10 +102,10 @@ Contient les comptes rendus des entretiens réalisés.
 
 Un entretien :
 
-* appartient à une personne ;
-* peut être associé à une demande ;
-* peut être lié à un rendez-vous ;
-* peut être réalisé avant ou après l'ouverture d'un dossier.
+- appartient à une personne ;
+- peut être associé à une demande ;
+- peut être lié à un rendez-vous ;
+- peut être réalisé avant ou après l'ouverture d'un dossier.
 
 Avant l'ouverture d'un dossier, l'entretien n'est rattaché à aucun dossier.
 
@@ -129,10 +129,10 @@ Contient les dossiers de prise en charge.
 
 Chaque dossier :
 
-* est lié à une personne ;
-* est lié à une demande ;
-* est lié à un contrat ;
-* possède un conseiller principal.
+- est lié à une personne ;
+- est lié à une demande ;
+- est lié à un contrat ;
+- possède un conseiller principal.
 
 Le dossier représente le début officiel de l'accompagnement.
 
@@ -144,9 +144,9 @@ Contient les activités réalisées pendant la prise en charge.
 
 Exemples :
 
-* suivi ;
-* note ;
-* recommandation.
+- suivi ;
+- note ;
+- recommandation.
 
 Les entretiens disposent de leur propre collection et ne sont donc pas stockés ici.
 
@@ -160,10 +160,10 @@ Journal technique des événements du dossier.
 
 Exemples :
 
-* création ;
-* changement de conseiller ;
-* changement de statut ;
-* clôture.
+- création ;
+- changement de conseiller ;
+- changement de statut ;
+- clôture.
 
 Ce journal assure la traçabilité des actions.
 
@@ -175,12 +175,12 @@ Stocke les références des documents enregistrés dans Firebase Storage.
 
 Les fichiers peuvent être associés à :
 
-* une personne ;
-* une demande ;
-* un entretien ;
-* un contrat ;
-* un dossier ;
-* une activité.
+- une personne ;
+- une demande ;
+- un entretien ;
+- un contrat ;
+- un dossier ;
+- une activité.
 
 ---
 
@@ -190,9 +190,9 @@ Contient les utilisateurs autorisés à accéder à l'application.
 
 Le profil utilisateur détermine :
 
-* son rôle ;
-* ses permissions ;
-* son état (actif ou inactif).
+- son rôle ;
+- ses permissions ;
+- son état (actif ou inactif).
 
 ---
 
@@ -202,12 +202,12 @@ Collection utilisée pour générer les numéros métier.
 
 Exemples :
 
-* numéro de personne ;
-* numéro de demande ;
-* numéro de rendez-vous ;
-* numéro d'entretien ;
-* numéro de contrat ;
-* numéro de dossier.
+- numéro de personne ;
+- numéro de demande ;
+- numéro de rendez-vous ;
+- numéro d'entretien ;
+- numéro de contrat ;
+- numéro de dossier.
 
 ---
 
@@ -314,19 +314,19 @@ Les index seront créés selon les besoins des écrans de recherche et des table
 
 Les principaux champs concernés sont :
 
-* personId
-* requestId
-* appointmentId
-* interviewId
-* contractId
-* caseId
-* assignedCounselorId
-* primaryCounselorId
-* status
-* interviewDate
-* appointmentDate
-* createdAt
-* updatedAt
+- personId
+- requestId
+- appointmentId
+- interviewId
+- contractId
+- caseId
+- assignedCounselorId
+- primaryCounselorId
+- status
+- interviewDate
+- appointmentDate
+- createdAt
+- updatedAt
 
 ---
 
@@ -344,10 +344,10 @@ Les documents associés restent accessibles aux utilisateurs autorisés.
 
 L'accès aux données est contrôlé par :
 
-* Firebase Authentication ;
-* les rôles et permissions de l'application ;
-* les règles de sécurité Firestore ;
-* les règles de sécurité Firebase Storage.
+- Firebase Authentication ;
+- les rôles et permissions de l'application ;
+- les règles de sécurité Firestore ;
+- les règles de sécurité Firebase Storage.
 
 ---
 
@@ -355,9 +355,9 @@ L'accès aux données est contrôlé par :
 
 La structure de la base de données est conçue pour permettre :
 
-* l'ajout de nouveaux types d'activités ;
-* l'ajout de nouveaux documents ;
-* l'évolution des modules métier ;
+- l'ajout de nouveaux types d'activités ;
+- l'ajout de nouveaux documents ;
+- l'évolution des modules métier ;
 
 sans remettre en cause les données existantes.
 
