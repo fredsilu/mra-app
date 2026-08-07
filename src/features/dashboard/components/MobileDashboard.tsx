@@ -2,6 +2,11 @@
 
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  canManageAgenda,
+  canManageUsers,
+  hasGlobalAccess,
+} from "@/permissions";
 
 import { COLORS } from "@/constants/theme";
 import { AppButton } from "@/components/ui/AppButton";
@@ -87,6 +92,32 @@ export function MobileDashboard({
         color="#16A34A"
         onPress={() => router.push("/cases")}
       />
+      {canManageAgenda(profile) ? (
+        <QuickButton
+          icon="🗓️"
+          title="Agenda"
+          color="#F59E0B"
+          onPress={() => router.push("/activities")}
+        />
+      ) : null}
+
+      {hasGlobalAccess(profile) ? (
+        <QuickButton
+          icon="👥"
+          title="Conseillers"
+          color="#F97316"
+          onPress={() => router.push("/counselors")}
+        />
+      ) : null}
+
+      {canManageUsers(profile) ? (
+        <QuickButton
+          icon="⚙️"
+          title="Utilisateurs"
+          color="#0F766E"
+          onPress={() => router.push("/users")}
+        />
+      ) : null}
 
       <View style={{ height: 25 }} />
 

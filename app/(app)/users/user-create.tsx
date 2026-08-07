@@ -34,7 +34,7 @@ const roleOptions: AppSelectOption<UserRole>[] = [
     value: "adjoint",
   },
   {
-    label: "SecrÃ©taire",
+    label: "Secrétaire",
     value: "secretaire",
   },
   {
@@ -72,34 +72,34 @@ function getErrorMessage(error: unknown): string {
 
   switch (errorCode) {
     case "auth/email-already-in-use":
-      return "Cette adresse email est dÃ©jÃ  utilisÃ©e par un autre compte.";
+      return "Cette adresse email est déjà  utilisée par un autre compte.";
 
     case "auth/invalid-email":
-      return "Lâ€™adresse email renseignÃ©e nâ€™est pas valide.";
+      return "L'adresse email renseignée n'est pas valide.";
 
     case "auth/weak-password":
-      return "Le mot de passe est trop faible. Il doit contenir au moins 6 caractÃ¨res.";
+      return "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
 
     case "auth/network-request-failed":
-      return "La connexion au serveur a Ã©chouÃ©. VÃ©rifiez votre connexion Internet.";
+      return "La connexion au serveur a échoué. Vérifiez votre connexion Internet.";
 
     case "auth/operation-not-allowed":
-      return "La crÃ©ation de comptes par email et mot de passe nâ€™est pas activÃ©e dans Firebase Authentication.";
+      return "La création de comptes par email et mot de passe n'est pas activée dans Firebase Authentication.";
 
     case "auth/too-many-requests":
-      return "Trop de tentatives ont Ã©tÃ© effectuÃ©es. Veuillez rÃ©essayer plus tard.";
+      return "Trop de tentatives ont été effectuées. Veuillez réessayer plus tard.";
 
     case "permission-denied":
-      return "Vous nâ€™avez pas lâ€™autorisation de crÃ©er cet utilisateur. VÃ©rifiez les rÃ¨gles Firestore.";
+      return "Vous n'avez pas l'autorisation de créer cet utilisateur. Vérifiez les règles Firestore.";
 
     case "DISPLAY_NAME_REQUIRED":
       return "Le nom complet est obligatoire.";
 
     case "EMAIL_REQUIRED":
-      return "Lâ€™adresse email est obligatoire.";
+      return "L'adresse email est obligatoire.";
 
     case "PASSWORD_TOO_SHORT":
-      return "Le mot de passe doit contenir au moins 6 caractÃ¨res.";
+      return "Le mot de passe doit contenir au moins 6 caractères.";
 
     default:
       break;
@@ -111,17 +111,17 @@ function getErrorMessage(error: unknown): string {
         return "Le nom complet est obligatoire.";
 
       case "EMAIL_REQUIRED":
-        return "Lâ€™adresse email est obligatoire.";
+        return "L'adresse email est obligatoire.";
 
       case "PASSWORD_TOO_SHORT":
-        return "Le mot de passe doit contenir au moins 6 caractÃ¨res.";
+        return "Le mot de passe doit contenir au moins 6 caractères.";
 
       default:
         break;
     }
   }
 
-  return "Une erreur est survenue pendant la crÃ©ation de lâ€™utilisateur.";
+  return "Une erreur est survenue pendant la création de l'utilisateur.";
 }
 
 export default function UserCreateScreen() {
@@ -139,8 +139,8 @@ export default function UserCreateScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   /*
-   * Cette rÃ©fÃ©rence bloque immÃ©diatement un second clic,
-   * sans attendre la mise Ã  jour du state React.
+   * Cette référence bloque immédiatement un second clic,
+   * sans attendre la mise à  jour du state React.
    */
   const isSubmittingRef = useRef(false);
 
@@ -155,17 +155,17 @@ export default function UserCreateScreen() {
     }
 
     if (!normalizedEmail) {
-      return "Lâ€™adresse email est obligatoire.";
+      return "L'adresse email est obligatoire.";
     }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(normalizedEmail)) {
-      return "Lâ€™adresse email renseignÃ©e nâ€™est pas valide.";
+      return "L'adresse email renseignée n'est pas valide.";
     }
 
     if (password.length < 6) {
-      return "Le mot de passe doit contenir au moins 6 caractÃ¨res.";
+      return "Le mot de passe doit contenir au moins 6 caractères.";
     }
 
     if (password !== passwordConfirmation) {
@@ -183,7 +183,7 @@ export default function UserCreateScreen() {
     const validationMessage = validateForm();
 
     if (validationMessage) {
-      Alert.alert("Informations incomplÃ¨tes", validationMessage);
+      Alert.alert("Informations incomplètes", validationMessage);
 
       return;
     }
@@ -201,19 +201,19 @@ export default function UserCreateScreen() {
       });
 
       /*
-       * La navigation ne dÃ©pend plus du bouton OK de lâ€™alerte.
+       * La navigation ne dépend plus du bouton OK de l'alerte.
        * Cela fonctionne aussi correctement sur le Web.
        */
       router.replace("/users");
 
       Alert.alert(
-        "Utilisateur crÃ©Ã©",
-        "Le compte utilisateur a Ã©tÃ© crÃ©Ã© avec succÃ¨s.",
+        "Utilisateur créé",
+        "Le compte utilisateur a été créé avec succès.",
       );
     } catch (error) {
-      console.error("Erreur lors de la crÃ©ation de lâ€™utilisateur :", error);
+      console.error("Erreur lors de la création de l'utilisateur :", error);
 
-      Alert.alert("CrÃ©ation impossible", getErrorMessage(error));
+      Alert.alert("Création impossible", getErrorMessage(error));
 
       isSubmittingRef.current = false;
       setIsSaving(false);
@@ -239,7 +239,7 @@ export default function UserCreateScreen() {
             textAlign: "center",
           }}
         >
-          AccÃ¨s refusÃ©
+          Accès refusé
         </Text>
 
         <Text
@@ -250,7 +250,7 @@ export default function UserCreateScreen() {
             lineHeight: 21,
           }}
         >
-          Seuls le responsable et lâ€™adjoint peuvent crÃ©er des utilisateurs.
+          Seuls le responsable et l'adjoint peuvent créer des utilisateurs.
         </Text>
 
         <TouchableOpacity
@@ -318,8 +318,8 @@ export default function UserCreateScreen() {
               lineHeight: 20,
             }}
           >
-            CrÃ©ez un compte et attribuez-lui un rÃ´le dans le MinistÃ¨re de la
-            Relation dâ€™Aide.
+            Créez un compte et attribuez-lui un rôle dans le Ministère de la
+            Relation d'Aide.
           </Text>
 
           <View
@@ -370,8 +370,8 @@ export default function UserCreateScreen() {
             </View>
 
             <AppSelect<UserRole>
-              label="RÃ´le"
-              placeholder="SÃ©lectionner un rÃ´le"
+              label="Rôle"
+              placeholder="Sélectionner un rôle"
               value={role}
               options={roleOptions}
               onValueChange={setRole}
@@ -380,7 +380,7 @@ export default function UserCreateScreen() {
 
             <AppSelect<ActiveStatus>
               label="Statut"
-              placeholder="SÃ©lectionner un statut"
+              placeholder="Sélectionner un statut"
               value={activeStatus}
               options={activeStatusOptions}
               onValueChange={setActiveStatus}
@@ -399,7 +399,7 @@ export default function UserCreateScreen() {
               </Text>
 
               <AppInput
-                placeholder="Minimum 6 caractÃ¨res"
+                placeholder="Minimum 6 caractères"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -421,7 +421,7 @@ export default function UserCreateScreen() {
               </Text>
 
               <AppInput
-                placeholder="RÃ©pÃ©ter le mot de passe"
+                placeholder="Répéter le mot de passe"
                 value={passwordConfirmation}
                 onChangeText={setPasswordConfirmation}
                 secureTextEntry
@@ -447,9 +447,9 @@ export default function UserCreateScreen() {
                   lineHeight: 19,
                 }}
               >
-                Communiquez le mot de passe temporaire Ã  lâ€™utilisateur de
-                maniÃ¨re confidentielle. La gestion du changement obligatoire de
-                mot de passe sera ajoutÃ©e ultÃ©rieurement.
+                Communiquez le mot de passe temporaire à  l'utilisateur de
+                manière confidentielle. La gestion du changement obligatoire de
+                mot de passe sera ajoutée ultérieurement.
               </Text>
             </View>
 
@@ -479,7 +479,7 @@ export default function UserCreateScreen() {
                       fontWeight: "600",
                     }}
                   >
-                    CrÃ©ation en cours...
+                    Création en cours...
                   </Text>
                 </>
               ) : (
@@ -490,7 +490,7 @@ export default function UserCreateScreen() {
                     fontWeight: "700",
                   }}
                 >
-                  CrÃ©er lâ€™utilisateur
+                  Créer l'utilisateur
                 </Text>
               )}
             </TouchableOpacity>
@@ -526,4 +526,3 @@ export default function UserCreateScreen() {
     </SafeAreaView>
   );
 }
-
