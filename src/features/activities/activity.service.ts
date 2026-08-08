@@ -1,5 +1,8 @@
+//src/features/activities/activity.service.ts
+
 import {
   addDoc,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -22,6 +25,20 @@ import type {
 } from "./activity.types";
 
 const COLLECTION_NAME = "activities";
+
+async function grantPersonAccessToCounselor(
+  personId: string,
+  counselorId: string,
+): Promise<void> {
+  if (!personId.trim() || !counselorId.trim()) {
+    return;
+  }
+
+  await updateDoc(doc(db, "people", personId), {
+    counselorIds: arrayUnion(counselorId),
+    updatedAt: serverTimestamp(),
+  });
+}
 
 function mapActivity(id: string, data: Record<string, unknown>): Activity {
   return {
@@ -76,6 +93,8 @@ export async function createActivity(
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  await grantPersonAccessToCounselor(input.personId, input.counselorId);
 
   return reference.id;
 }
@@ -153,6 +172,42 @@ export async function updateActivity(
   }
 
   await updateDoc(doc(db, COLLECTION_NAME, activityId), payload);
+}
+
+export async function updatePlannedActivity(
+  activityId: string,
+  input: {
+    counselorId: string;
+    counselorName: string;
+    scheduledAt: Date;
+    title: string;
+    description?: string;
+  },
+): Promise<void> {
+  const reference = doc(db, COLLECTION_NAME, activityId);
+
+  const snapshot = await getDoc(reference);
+
+  if (!snapshot.exists()) {
+    throw new Error("ACTIVITY_NOT_FOUND");
+  }
+
+  const activity = mapActivity(snapshot.id, snapshot.data());
+
+  if (activity.status !== "planned") {
+    throw new Error("ONLY_PLANNED_ACTIVITY_CAN_BE_EDITED");
+  }
+
+  await updateDoc(reference, {
+    counselorId: input.counselorId,
+    counselorName: input.counselorName,
+    scheduledAt: Timestamp.fromDate(input.scheduledAt),
+    title: input.title.trim(),
+    description: input.description?.trim() ?? "",
+    updatedAt: serverTimestamp(),
+  });
+
+  await grantPersonAccessToCounselor(activity.personId, input.counselorId);
 }
 
 export async function completeActivity(

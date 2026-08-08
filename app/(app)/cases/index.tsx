@@ -1,4 +1,5 @@
 // app/(app)/cases/index.tsx
+
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -11,6 +12,8 @@ import {
 } from "react-native";
 
 import { COLORS } from "@/constants/theme";
+import { useAuth } from "@/contexts/AuthContext";
+import { getPeople } from "@/features/people/person.service";
 import { CasesHeader } from "@/features/cases/components/CasesHeader";
 import { CasesList } from "@/features/cases/components/CasesList";
 import { CasesStatistics } from "@/features/cases/components/CasesStatistics";
@@ -22,30 +25,55 @@ import { getCases } from "@/features/cases/case.service";
 import type { Case } from "@/features/cases/case.types";
 
 export default function CasesScreen() {
+  const { profile } = useAuth();
+
   const [cases, setCases] = useState<Case[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<CaseFilter>("all");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = useCallback(async (refreshOnly = false) => {
-    try {
-      if (refreshOnly) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
+  const loadData = useCallback(
+    async (refreshOnly = false) => {
+      try {
+        if (refreshOnly) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+
+        const allCases = await getCases();
+
+        if (profile?.role === "conseiller") {
+          const people = await getPeople();
+
+          const accessiblePersonIds = new Set(
+            people
+              .filter((person) => person.counselorIds?.includes(profile.uid))
+              .map((person) => person.id),
+          );
+
+          setCases(
+            allCases.filter((helpCase) =>
+              accessiblePersonIds.has(helpCase.personId),
+            ),
+          );
+
+          return;
+        }
+
+        setCases(allCases);
+      } catch (error) {
+        console.error("Erreur lors du chargement des dossiers :", error);
+
+        Alert.alert("Erreur", "Impossible de charger les dossiers.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-
-      setCases(await getCases());
-    } catch (error) {
-      console.error("Erreur lors du chargement des dossiers :", error);
-
-      Alert.alert("Erreur", "Impossible de charger les dossiers.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+    },
+    [profile],
+  );
 
   useFocusEffect(
     useCallback(() => {

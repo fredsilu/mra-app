@@ -6,6 +6,7 @@ import type { Person } from "@/features/people/person.types";
 type Props = {
   person: Person;
   hasOpenCase: boolean;
+  openCaseId?: string;
   pendingFirstInterviewId?: string;
   waitingCaseDecision?: boolean;
   firstInterviewId?: string;
@@ -14,6 +15,7 @@ type Props = {
 export function PersonActions({
   person,
   hasOpenCase,
+  openCaseId,
   pendingFirstInterviewId,
   waitingCaseDecision = false,
   firstInterviewId,
@@ -31,15 +33,15 @@ export function PersonActions({
         }
       />
 
-      {hasOpenCase ? (
+      {hasOpenCase && openCaseId ? (
         <ActionButton
           title="Voir le dossier"
           variant="success"
           onPress={() =>
             router.push({
-              pathname: "/cases",
+              pathname: "/cases/[id]",
               params: {
-                personId: person.id,
+                id: openCaseId,
               },
             })
           }

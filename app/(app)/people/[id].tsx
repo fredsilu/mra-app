@@ -124,6 +124,9 @@ export default function PersonDetailsScreen() {
           <PersonActions
             person={person}
             hasOpenCase={journey?.state === "CASE_OPEN"}
+            openCaseId={
+              journey?.state === "CASE_OPEN" ? journey.openCaseId : undefined
+            }
             pendingFirstInterviewId={
               journey?.state === "FIRST_INTERVIEW_PLANNED"
                 ? journey.firstInterviewId

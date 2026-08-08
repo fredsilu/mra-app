@@ -1,5 +1,13 @@
-import { PropsWithChildren } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+//src/components/layout/Page.tsx
+
+import { PropsWithChildren } from "react";
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 export function Page({ children }: PropsWithChildren) {
   const { width } = useWindowDimensions();
@@ -21,8 +29,8 @@ export function Page({ children }: PropsWithChildren) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F7FB' },
+  safeArea: { flex: 1, backgroundColor: "#F5F7FB" },
   scrollContent: { flexGrow: 1, padding: 16, paddingBottom: 40 },
   scrollContentWide: { paddingHorizontal: 32, paddingVertical: 28 },
-  content: { width: '100%', maxWidth: 1180, alignSelf: 'center' },
+  content: { width: "100%", maxWidth: 1180, alignSelf: "center" },
 });

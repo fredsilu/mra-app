@@ -104,7 +104,7 @@ export function MobileDashboard({
       {hasGlobalAccess(profile) ? (
         <QuickButton
           icon="👥"
-          title="Conseillers"
+          title="Mon espace conseiller"
           color="#F97316"
           onPress={() => router.push("/counselors")}
         />

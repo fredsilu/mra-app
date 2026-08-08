@@ -1,3 +1,5 @@
+//src/features/cases/components/CasesStatistics.tsx
+
 import { StyleSheet, Text, View } from "react-native";
 
 import { COLORS } from "@/constants/theme";

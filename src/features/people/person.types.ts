@@ -45,6 +45,8 @@ export interface Person {
   origin: PersonOrigin;
   contactChannel: ContactChannel;
 
+  counselorIds?: string[];
+
   isArchived: boolean;
   createdAt?: Date;
   updatedAt?: Date;

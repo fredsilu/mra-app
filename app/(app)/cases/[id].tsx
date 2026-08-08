@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { getPersonById } from "@/features/people/person.service";
 
 import {
   CaseActions,
@@ -88,19 +89,45 @@ export default function CaseDetailScreen() {
     try {
       setIsLoading(true);
 
-      const [loadedCase, loadedActivities] = await Promise.all([
-        getCase(caseId),
-        getActivitiesByCase(caseId),
-      ]);
+      // On charge d'abord le dossier.
+      const loadedCase = await getCase(caseId);
+
+      if (!loadedCase) {
+        setHelpCase(null);
+        setActivities([]);
+        return;
+      }
+
+      // Sécurité spécifique au conseiller.
+      if (profile?.role === "conseiller") {
+        const person = await getPersonById(loadedCase.personId);
+
+        const hasAccess = person?.counselorIds?.includes(profile.uid) ?? false;
+
+        if (!hasAccess) {
+          setHelpCase(null);
+          setActivities([]);
+
+          showMessage(
+            "Accès refusé",
+            "Vous n’avez pas accès au dossier de cette personne.",
+          );
+
+          router.replace("/cases");
+          return;
+        }
+      }
+
+      // Les activités ne sont chargées qu'après
+      // validation de l'accès au dossier.
+      const loadedActivities = await getActivitiesByCase(caseId);
 
       setHelpCase(loadedCase);
       setActivities(loadedActivities);
 
-      if (loadedCase) {
-        setClosureReason(loadedCase.closureReason ?? "");
+      setClosureReason(loadedCase.closureReason ?? "");
 
-        setClosureSummary(loadedCase.closureSummary ?? "");
-      }
+      setClosureSummary(loadedCase.closureSummary ?? "");
     } catch (error) {
       console.error("Erreur lors du chargement du dossier :", error);
 
@@ -108,7 +135,7 @@ export default function CaseDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, profile]);
 
   useFocusEffect(
     useCallback(() => {
@@ -190,6 +217,8 @@ export default function CaseDetailScreen() {
   }
 
   const isClosed = helpCase.status === "closed";
+  const canManageCase =
+    profile?.role === "responsable" || profile?.role === "adjoint";
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -200,7 +229,7 @@ export default function CaseDetailScreen() {
 
         <CaseActivitiesCard helpCase={helpCase} activities={activities} />
 
-        {!isClosed ? (
+        {!isClosed && canManageCase ? (
           <CaseClosureCard
             closureReason={closureReason}
             closureSummary={closureSummary}

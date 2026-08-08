@@ -9,21 +9,13 @@ import {
   Alert,
   Platform,
   Pressable,
-  SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 
-import {
-  FormActions,
-  FormCard,
-  FormHeader,
-  FormPage,
-} from "@/components/forms";
+import { FormHeader, FormPage } from "@/components/forms";
 
-import { AppButton } from "@/components/ui/AppButton";
 import { AppInput } from "@/components/ui/AppInput";
 import { AppSelect, type AppSelectOption } from "@/components/ui/AppSelect";
 import { COLORS } from "@/constants/theme";
@@ -55,6 +47,15 @@ function formatWebTime(value: Date): string {
   const minutes = String(value.getMinutes()).padStart(2, "0");
 
   return `${hours}:${minutes}`;
+}
+
+function showMessage(title: string, message: string): void {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+
+  Alert.alert(title, message);
 }
 
 export default function NewActivityScreen() {
@@ -120,7 +121,7 @@ export default function NewActivityScreen() {
       } catch (error) {
         console.error("Erreur lors du chargement des conseillers :", error);
 
-        Alert.alert("Erreur", "Impossible de charger les conseillers.");
+        showMessage("Erreur", "Impossible de charger les conseillers.");
       } finally {
         setIsLoadingCounselors(false);
       }
@@ -203,29 +204,38 @@ export default function NewActivityScreen() {
     }
 
     if (!personId || !personName) {
-      Alert.alert("Validation", "La personne concernée est obligatoire.");
+      showMessage(
+        "Champ obligatoire",
+        "La personne concernée est obligatoire.",
+      );
       return;
     }
 
     if (!counselorId || !counselorName) {
-      Alert.alert("Validation", "Sélectionnez un conseiller.");
+      showMessage("Champ obligatoire", "Veuillez sélectionner un conseiller.");
       return;
     }
 
     if (!type) {
-      Alert.alert("Validation", "Sélectionnez un type d’activité.");
+      showMessage(
+        "Champ obligatoire",
+        "Veuillez sélectionner un type d’activité.",
+      );
       return;
     }
 
     if (!title.trim()) {
-      Alert.alert("Validation", "Le titre est obligatoire.");
+      showMessage(
+        "Champ obligatoire",
+        "Veuillez renseigner le titre de l’activité.",
+      );
       return;
     }
 
     const createdBy = profile?.uid ?? user?.uid;
 
     if (!createdBy) {
-      Alert.alert(
+      showMessage(
         "Session invalide",
         "Impossible d’identifier l’utilisateur connecté.",
       );
@@ -249,7 +259,7 @@ export default function NewActivityScreen() {
         createdBy,
       });
 
-      Alert.alert(
+      showMessage(
         "Activité créée",
         "L’activité a été enregistrée avec succès.",
       );
@@ -267,7 +277,7 @@ export default function NewActivityScreen() {
         error instanceof Error &&
         error.message === "PLANNED_FIRST_INTERVIEW_ALREADY_EXISTS"
       ) {
-        Alert.alert(
+        showMessage(
           "Entretien déjà planifié",
           "Un premier entretien est déjà planifié pour cette personne.",
         );
@@ -282,7 +292,7 @@ export default function NewActivityScreen() {
         return;
       }
 
-      Alert.alert("Erreur", "Impossible d’enregistrer l’activité.");
+      showMessage("Erreur", "Impossible d’enregistrer l’activité.");
     } finally {
       setIsSaving(false);
     }
@@ -428,21 +438,35 @@ export default function NewActivityScreen() {
         />
       </View>
 
-      <FormActions>
-        <AppButton
-          title="Annuler"
+      <View style={styles.actions}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.cancelButton,
+            pressed && !isSaving && styles.buttonPressed,
+            isSaving && styles.buttonDisabled,
+          ]}
           disabled={isSaving}
           onPress={() => router.back()}
-        />
+        >
+          <Text style={styles.cancelButtonText}>Annuler</Text>
+        </Pressable>
 
-        <AppButton
-          title={isSaving ? "Enregistrement..." : "Enregistrer"}
+        <Pressable
+          style={({ pressed }) => [
+            styles.saveButton,
+            pressed && !isSaving && styles.buttonPressed,
+            isSaving && styles.buttonDisabled,
+          ]}
           disabled={isSaving}
           onPress={() => {
             void handleSave();
           }}
-        />
-      </FormActions>
+        >
+          <Text style={styles.saveButtonText}>
+            {isSaving ? "Enregistrement..." : "Enregistrer l’activité"}
+          </Text>
+        </Pressable>
+      </View>
     </FormPage>
   );
 }
@@ -497,5 +521,54 @@ const styles = StyleSheet.create({
   pickerText: {
     color: COLORS.text,
     fontSize: 16,
+  },
+
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "flex-end",
+    marginTop: 8,
+  },
+
+  cancelButton: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 52,
+    paddingHorizontal: 22,
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  saveButton: {
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    flexGrow: 1,
+    justifyContent: "center",
+    maxWidth: 320,
+    minHeight: 52,
+    paddingHorizontal: 24,
+  },
+
+  saveButtonText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+
+  buttonPressed: {
+    opacity: 0.8,
+  },
+
+  buttonDisabled: {
+    opacity: 0.55,
   },
 });

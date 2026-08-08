@@ -1,14 +1,18 @@
 //app/(app)/activities/[id].tsx
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  StyleSheet,
   Platform,
+  Pressable,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
+
+import { useAuth } from "@/contexts/AuthContext";
 
 import {
   ActivityActions,
@@ -67,6 +71,8 @@ export default function ActivityDetailScreen() {
 
   const [activity, setActivity] = useState<Activity | null>(null);
 
+  const { profile } = useAuth();
+
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -83,6 +89,20 @@ export default function ActivityDetailScreen() {
       setIsLoading(true);
 
       const loadedActivity = await getActivityById(id);
+      if (
+        loadedActivity &&
+        profile?.role === "conseiller" &&
+        loadedActivity.counselorId !== profile.uid
+      ) {
+        setActivity(null);
+
+        showMessage(
+          "Accès refusé",
+          "Cette activité est attribuée à un autre conseiller.",
+        );
+
+        return;
+      }
 
       setActivity(loadedActivity);
       setResult(loadedActivity?.result ?? "");
@@ -93,7 +113,7 @@ export default function ActivityDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, profile]);
 
   useFocusEffect(
     useCallback(() => {
@@ -214,6 +234,36 @@ export default function ActivityDetailScreen() {
 
       <ActivityInformationCard activity={activity} />
 
+      {isPlanned &&
+      (profile?.role !== "conseiller" ||
+        activity.counselorId === profile.uid) ? (
+        <View style={styles.editSection}>
+          <Text style={styles.editTitle}>Rendez-vous planifié</Text>
+
+          <Text style={styles.editText}>
+            Vous pouvez modifier le conseiller, la date, l’heure ou les
+            informations du rendez-vous tant qu’il n’a pas encore été réalisé.
+          </Text>
+
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/activities/edit",
+                params: {
+                  id: activity.id,
+                },
+              })
+            }
+            style={({ pressed }) => [
+              styles.editButton,
+              pressed ? styles.editButtonPressed : null,
+            ]}
+          >
+            <Text style={styles.editButtonText}>Modifier le rendez-vous</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <ActivityResultCard
         result={result}
         completedResult={activity.result}
@@ -287,5 +337,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     lineHeight: 23,
+  },
+  editSection: {
+    backgroundColor: "#EFF6FF",
+    borderColor: "#BFDBFE",
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+    marginTop: 20,
+    padding: 18,
+  },
+
+  editTitle: {
+    color: "#1E3A8A",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+
+  editText: {
+    color: "#475569",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  editButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#2563EB",
+    borderRadius: 10,
+    justifyContent: "center",
+    marginTop: 4,
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+
+  editButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  editButtonPressed: {
+    opacity: 0.8,
   },
 });

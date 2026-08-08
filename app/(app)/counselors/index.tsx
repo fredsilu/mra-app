@@ -151,7 +151,28 @@ export default function CounselorHomeScreen() {
         }
         contentContainerStyle={styles.content}
       >
-        <CounselorHeader profile={profile} />
+        <View style={styles.hero}>
+          <View style={styles.heroCopy}>
+            <Text style={styles.eyebrow}>MON ESPACE CONSEILLER</Text>
+
+            <Text style={styles.title}>Bonjour, {profile.displayName}</Text>
+
+            <Text style={styles.subtitle}>
+              Retrouvez vos personnes suivies, vos rendez-vous, vos dossiers
+              actifs et vos dernières activités.
+            </Text>
+          </View>
+
+          {data.overdueActivitiesCount > 0 ? (
+            <View style={styles.alertBadge}>
+              <Text style={styles.alertBadgeValue}>
+                {data.overdueActivitiesCount}
+              </Text>
+
+              <Text style={styles.alertBadgeText}>activité(s) en retard</Text>
+            </View>
+          ) : null}
+        </View>
 
         <CounselorStatistics
           peopleCount={data.peopleCount}
@@ -161,16 +182,13 @@ export default function CounselorHomeScreen() {
         />
 
         <View
-          style={[
-            styles.primaryGrid,
-            !isDesktop ? styles.primaryGridMobile : null,
-          ]}
+          style={[styles.primaryGrid, !isDesktop && styles.primaryGridMobile]}
         >
-          <View style={styles.column}>
+          <View style={styles.mainColumn}>
             <CounselorActivities activities={data.plannedActivities} />
           </View>
 
-          <View style={styles.column}>
+          <View style={styles.sideColumn}>
             <CounselorCases cases={data.activeCases} />
           </View>
         </View>
@@ -181,7 +199,12 @@ export default function CounselorHomeScreen() {
           />
         </View>
 
-        <CounselorLogout isLoggingOut={isLoggingOut} onLogout={handleLogout} />
+        <View style={styles.logoutSection}>
+          <CounselorLogout
+            isLoggingOut={isLoggingOut}
+            onLogout={handleLogout}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -190,15 +213,109 @@ export default function CounselorHomeScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: COLORS.light,
+    backgroundColor: "#F5F7FB",
   },
 
   content: {
     alignSelf: "center",
-    maxWidth: 1200,
-    padding: 20,
+    maxWidth: 1180,
+    paddingHorizontal: 20,
+    paddingTop: 28,
     paddingBottom: 50,
     width: "100%",
+  },
+
+  hero: {
+    alignItems: "flex-start",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 20,
+    justifyContent: "space-between",
+    marginBottom: 20,
+    padding: 22,
+  },
+
+  heroCopy: {
+    flex: 1,
+  },
+
+  eyebrow: {
+    color: "#9A6B13",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+
+  title: {
+    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: "900",
+    marginTop: 6,
+  },
+
+  subtitle: {
+    color: COLORS.muted,
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 8,
+    maxWidth: 720,
+  },
+
+  alertBadge: {
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FECACA",
+    borderRadius: 14,
+    borderWidth: 1,
+    minWidth: 120,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+
+  alertBadgeValue: {
+    color: "#B91C1C",
+    fontSize: 24,
+    fontWeight: "900",
+  },
+
+  alertBadgeText: {
+    color: "#991B1B",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
+    textAlign: "center",
+  },
+
+  primaryGrid: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 18,
+    marginTop: 22,
+  },
+
+  primaryGridMobile: {
+    flexDirection: "column",
+  },
+
+  mainColumn: {
+    flex: 1.45,
+    width: "100%",
+  },
+
+  sideColumn: {
+    flex: 1,
+    width: "100%",
+  },
+
+  recentSection: {
+    marginTop: 18,
+  },
+
+  logoutSection: {
+    marginTop: 24,
   },
 
   center: {
@@ -225,25 +342,5 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginTop: 8,
     textAlign: "center",
-  },
-
-  primaryGrid: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 16,
-    marginTop: 22,
-  },
-
-  primaryGridMobile: {
-    flexDirection: "column",
-  },
-
-  column: {
-    flex: 1,
-    width: "100%",
-  },
-
-  recentSection: {
-    marginTop: 16,
   },
 });

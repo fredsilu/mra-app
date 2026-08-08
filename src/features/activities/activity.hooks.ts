@@ -1,4 +1,7 @@
+//src/features/activities/activity.hooks.ts
 import { useCallback, useEffect, useState } from "react";
+
+import { useAuth } from "@/contexts/AuthContext";
 
 import {
   getActivitiesByCase,
@@ -27,8 +30,13 @@ function useActivityLoader(
     try {
       setLoading(true);
       setError(null);
-      setActivities(await loader());
+
+      const result = await loader();
+
+      setActivities(result);
     } catch (caughtError) {
+      console.error("Erreur chargement activités :", caughtError);
+
       setError(
         caughtError instanceof Error
           ? caughtError.message
@@ -43,21 +51,35 @@ function useActivityLoader(
     void refresh();
   }, [refresh]);
 
-  return { activities, loading, error, refresh };
+  return {
+    activities,
+    loading,
+    error,
+    refresh,
+  };
 }
 
 export function useAllActivities(): UseActivitiesResult {
-  return useActivityLoader(() => getAllActivities(), []);
+  const { profile } = useAuth();
+
+  return useActivityLoader(async () => {
+    if (!profile) {
+      return [];
+    }
+
+    if (profile.role === "conseiller") {
+      return getActivitiesByCounselor(profile.uid);
+    }
+
+    return getAllActivities();
+  }, [profile]);
 }
 
 export function useCounselorActivities(
   counselorId: string | null | undefined,
 ): UseActivitiesResult {
   return useActivityLoader(
-    async () =>
-      counselorId
-        ? getActivitiesByCounselor(counselorId)
-        : [],
+    async () => (counselorId ? getActivitiesByCounselor(counselorId) : []),
     [counselorId],
   );
 }
@@ -66,8 +88,7 @@ export function useCaseActivities(
   caseId: string | null | undefined,
 ): UseActivitiesResult {
   return useActivityLoader(
-    async () =>
-      caseId ? getActivitiesByCase(caseId) : [],
+    async () => (caseId ? getActivitiesByCase(caseId) : []),
     [caseId],
   );
 }

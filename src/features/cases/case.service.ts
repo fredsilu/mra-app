@@ -138,6 +138,33 @@ export async function getCases(): Promise<Case[]> {
 }
 
 /**
+ * Retourne uniquement les dossiers attribués
+ * à un conseiller.
+ */
+export async function getCasesByCounselor(
+  counselorId: string,
+): Promise<Case[]> {
+  const normalizedCounselorId = counselorId.trim();
+
+  if (!normalizedCounselorId) {
+    return [];
+  }
+
+  const snapshot = await getDocs(
+    query(
+      collection(db, COLLECTION_NAME),
+      where("counselorId", "==", normalizedCounselorId),
+    ),
+  );
+
+  return snapshot.docs
+    .map((item) => mapCase(item.id, item.data()))
+    .sort(
+      (firstCase, secondCase) =>
+        secondCase.createdAt.toMillis() - firstCase.createdAt.toMillis(),
+    );
+}
+/**
  * Retourne un dossier par son identifiant.
  */
 export async function getCase(id: string): Promise<Case | null> {

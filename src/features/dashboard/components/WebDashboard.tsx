@@ -68,8 +68,7 @@ export function WebDashboard({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.brand}>
-            <Text style={styles.logo}>MRA</Text>
-            <Text style={styles.logoSubtitle}>Relation d’aide</Text>
+            <Text style={styles.logoSubtitle}>MENU</Text>
           </View>
 
           <View style={styles.navigation}>
@@ -109,7 +108,7 @@ export function WebDashboard({
             {globalAccess ? (
               <NavigationButton
                 icon="♙"
-                title="Conseillers"
+                title="Mon espace conseiller"
                 onPress={() => router.push("/counselors")}
               />
             ) : null}
@@ -268,8 +267,8 @@ export function WebDashboard({
             {globalAccess ? (
               <QuickAction
                 icon="♙"
-                title="Conseillers"
-                description="Consulter la charge et l’activité de chaque conseiller."
+                title="Mon espace conseiller"
+                description="Consulter la charge et l’activité de conseiller."
                 accentColor="#F97316"
                 onPress={() => router.push("/counselors")}
               />
