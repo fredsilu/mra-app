@@ -1,17 +1,14 @@
 //src/navigation/roleRoutes.ts
+import type { Href } from "expo-router";
 
-import { Href } from "expo-router";
-
-import { UserProfile } from "@/features/users/user.types";
+import type { UserProfile } from "@/features/users/user.types";
 
 export function getHomeRoute(profile: UserProfile | null): Href {
   switch (profile?.role) {
     case "responsable":
     case "adjoint":
-      return "/dashboard";
-
     case "secretaire":
-      return "/agenda";
+      return "/dashboard";
 
     case "conseiller":
       return "/counselors";

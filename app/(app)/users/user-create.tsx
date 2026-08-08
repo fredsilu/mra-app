@@ -1,4 +1,4 @@
-﻿// app/(app)/users/user-create.tsx
+// app/(app)/users/user-create.tsx
 
 import { router } from "expo-router";
 import { useRef, useState } from "react";
