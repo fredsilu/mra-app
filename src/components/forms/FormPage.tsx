@@ -1,3 +1,6 @@
+//src/components/forms/FormPage.tsx
+// src/components/forms/FormPage.tsx
+
 import type { ReactNode } from "react";
 import {
   SafeAreaView,
@@ -6,8 +9,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-
-import { COLORS } from "@/constants/theme";
 
 type Props = {
   children: ReactNode;
@@ -21,10 +22,15 @@ export function FormPage({ children }: Props) {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[styles.scroll, isDesktop && styles.desktop]}
+        contentContainerStyle={[
+          styles.scroll,
+          isDesktop && styles.scrollDesktop,
+        ]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.container}>{children}</View>
+        <View style={[styles.container, isDesktop && styles.containerDesktop]}>
+          {children}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -37,17 +43,25 @@ const styles = StyleSheet.create({
   },
 
   scroll: {
-    padding: 24,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 36,
+  },
+
+  scrollDesktop: {
+    alignItems: "center",
+    paddingHorizontal: 28,
+    paddingTop: 20,
     paddingBottom: 40,
   },
 
-  desktop: {
-    alignItems: "center",
+  container: {
+    gap: 18,
+    width: "100%",
   },
 
-  container: {
-    width: "100%",
-    maxWidth: 950,
-    gap: 24,
+  containerDesktop: {
+    gap: 16,
+    maxWidth: 1080,
   },
 });

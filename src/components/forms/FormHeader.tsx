@@ -1,5 +1,14 @@
+//src/components/forms/FormHeader.tsx
+// src/components/forms/FormHeader.tsx
+
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { COLORS } from "@/constants/theme";
 
@@ -9,22 +18,29 @@ type Props = {
 };
 
 export function FormHeader({ title, description }: Props) {
+  const { width } = useWindowDimensions();
+
+  const isDesktop = width >= 900;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDesktop && styles.containerDesktop]}>
       <Pressable
         onPress={() => router.back()}
-        style={({ pressed }) => [
-          styles.backButton,
-          pressed ? styles.pressed : null,
-        ]}
+        style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
       >
         <Text style={styles.backText}>← Retour</Text>
       </Pressable>
 
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, isDesktop && styles.titleDesktop]}>
+        {title}
+      </Text>
 
       {description ? (
-        <Text style={styles.description}>{description}</Text>
+        <Text
+          style={[styles.description, isDesktop && styles.descriptionDesktop]}
+        >
+          {description}
+        </Text>
       ) : null}
     </View>
   );
@@ -32,30 +48,42 @@ export function FormHeader({ title, description }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8,
+    gap: 6,
+  },
+
+  containerDesktop: {
+    gap: 4,
   },
 
   backButton: {
     alignSelf: "flex-start",
-    marginBottom: 6,
+    marginBottom: 4,
   },
 
   backText: {
     color: "#2563EB",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
   },
 
   title: {
     color: COLORS.text,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: "900",
+  },
+
+  titleDesktop: {
+    fontSize: 26,
   },
 
   description: {
     color: COLORS.muted,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+
+  descriptionDesktop: {
+    maxWidth: 760,
   },
 
   pressed: {

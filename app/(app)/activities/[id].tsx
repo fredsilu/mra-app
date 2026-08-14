@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,30 +32,6 @@ import {
   type Activity,
 } from "@/features/activities";
 
-function formatDate(activity: Activity): string {
-  if (!activity.scheduledAt) {
-    return "Date non renseignée";
-  }
-
-  return activity.scheduledAt.toDate().toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatTime(activity: Activity): string {
-  if (!activity.scheduledAt) {
-    return "Heure non renseignée";
-  }
-
-  return activity.scheduledAt.toDate().toLocaleTimeString("fr-FR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function showMessage(title: string, message: string) {
   if (Platform.OS === "web") {
     window.alert(`${title}\n\n${message}`);
@@ -68,6 +45,8 @@ export default function ActivityDetailScreen() {
   const { id } = useLocalSearchParams<{
     id?: string;
   }>();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
   const [activity, setActivity] = useState<Activity | null>(null);
 
@@ -232,74 +211,77 @@ export default function ActivityDetailScreen() {
     <Page>
       <ActivityHeader activity={activity} />
 
-      <ActivityInformationCard activity={activity} />
+      <View
+        style={[styles.desktopGrid, !isDesktop && styles.desktopGridMobile]}
+      >
+        <View style={styles.leftColumn}>
+          <ActivityInformationCard activity={activity} />
 
-      {isPlanned &&
-      (profile?.role !== "conseiller" ||
-        activity.counselorId === profile.uid) ? (
-        <View style={styles.editSection}>
-          <Text style={styles.editTitle}>Rendez-vous planifié</Text>
+          {isPlanned &&
+          (profile?.role !== "conseiller" ||
+            activity.counselorId === profile.uid) ? (
+            <View style={styles.editSection}>
+              <View style={styles.editCopy}>
+                <Text style={styles.editTitle}>Rendez-vous planifié</Text>
 
-          <Text style={styles.editText}>
-            Vous pouvez modifier le conseiller, la date, l’heure ou les
-            informations du rendez-vous tant qu’il n’a pas encore été réalisé.
-          </Text>
+                <Text style={styles.editText}>
+                  Vous pouvez modifier le conseiller, la date, l’heure ou les
+                  informations du rendez-vous tant qu’il n’a pas encore été
+                  réalisé.
+                </Text>
+              </View>
 
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/activities/edit",
-                params: {
-                  id: activity.id,
-                },
-              })
-            }
-            style={({ pressed }) => [
-              styles.editButton,
-              pressed ? styles.editButtonPressed : null,
-            ]}
-          >
-            <Text style={styles.editButtonText}>Modifier le rendez-vous</Text>
-          </Pressable>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/activities/edit",
+                    params: {
+                      id: activity.id,
+                    },
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.editButton,
+                  pressed && styles.editButtonPressed,
+                ]}
+              >
+                <Text style={styles.editButtonText}>
+                  Modifier le rendez-vous
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <ActivityActions personId={activity.personId} />
         </View>
-      ) : null}
 
-      <ActivityResultCard
-        result={result}
-        completedResult={activity.result}
-        isPlanned={isPlanned}
-        isCompleted={isCompleted}
-        isCompleting={isCompleting}
-        isCancelling={isCancelling}
-        onResultChange={setResult}
-        onComplete={() => {
-          void handleComplete();
-        }}
-        onCancel={handleCancel}
-      />
+        <View style={styles.rightColumn}>
+          <ActivityResultCard
+            result={result}
+            completedResult={activity.result}
+            isPlanned={isPlanned}
+            isCompleted={isCompleted}
+            isCompleting={isCompleting}
+            isCancelling={isCancelling}
+            onResultChange={setResult}
+            onComplete={() => {
+              void handleComplete();
+            }}
+            onCancel={handleCancel}
+          />
 
-      <ActivityDecisionCard
-        activity={activity}
-        onCloseWithoutCase={() => {
-          showMessage(
-            "Étape suivante",
-            "La clôture sans dossier sera connectée au Journey State à l’étape suivante.",
-          );
-        }}
-      />
-
-      <ActivityActions personId={activity.personId} />
+          <ActivityDecisionCard
+            activity={activity}
+            onCloseWithoutCase={() => {
+              showMessage(
+                "Étape suivante",
+                "La clôture sans dossier sera connectée au Journey State à l’étape suivante.",
+              );
+            }}
+          />
+        </View>
+      </View>
     </Page>
-  );
-}
-
-function Info({ label, value }: { label: string; value?: string }) {
-  return (
-    <View style={styles.info}>
-      <Text style={styles.infoLabel}>{label}</Text>
-
-      <Text style={styles.infoValue}>{value || "Non renseigné"}</Text>
-    </View>
   );
 }
 
@@ -311,6 +293,75 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 30,
   },
+  desktopGrid: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 18,
+  },
+
+  desktopGridMobile: {
+    flexDirection: "column",
+  },
+
+  leftColumn: {
+    flex: 1,
+    gap: 16,
+    width: "100%",
+  },
+
+  rightColumn: {
+    flex: 1.1,
+    gap: 16,
+    width: "100%",
+  },
+
+  editSection: {
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    borderColor: "#BFDBFE",
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 16,
+    justifyContent: "space-between",
+    padding: 16,
+  },
+
+  editCopy: {
+    flex: 1,
+  },
+
+  editTitle: {
+    color: "#1E3A8A",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+
+  editText: {
+    color: "#475569",
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+
+  editButton: {
+    alignItems: "center",
+    backgroundColor: "#2563EB",
+    borderRadius: 10,
+    justifyContent: "center",
+    minHeight: 42,
+    paddingHorizontal: 16,
+  },
+
+  editButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  editButtonPressed: {
+    opacity: 0.8,
+  },
 
   loadingText: {
     color: COLORS.muted,
@@ -320,64 +371,5 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 18,
     textAlign: "center",
-  },
-
-  info: {
-    gap: 4,
-  },
-
-  infoLabel: {
-    color: COLORS.muted,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  infoValue: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: "600",
-    lineHeight: 23,
-  },
-  editSection: {
-    backgroundColor: "#EFF6FF",
-    borderColor: "#BFDBFE",
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 10,
-    marginTop: 20,
-    padding: 18,
-  },
-
-  editTitle: {
-    color: "#1E3A8A",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-
-  editText: {
-    color: "#475569",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-
-  editButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "#2563EB",
-    borderRadius: 10,
-    justifyContent: "center",
-    marginTop: 4,
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-
-  editButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-
-  editButtonPressed: {
-    opacity: 0.8,
   },
 });

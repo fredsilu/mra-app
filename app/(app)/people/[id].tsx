@@ -103,13 +103,56 @@ export default function PersonDetailsScreen() {
     <Page>
       <PersonHeader person={person} />
 
-      <View style={styles.cardsGrid}>
-        <View style={styles.cardColumn}>
+      <View style={styles.desktopGrid}>
+        <View style={styles.leftColumn}>
           <PersonIdentityCard person={person} />
+
+          <PersonContactCard person={person} />
         </View>
 
-        <View style={styles.cardColumn}>
-          <PersonContactCard person={person} />
+        <View style={styles.rightColumn}>
+          <View style={styles.actions}>
+            {isLoadingJourney ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="small" />
+
+                <Text style={styles.loadingText}>
+                  Chargement du parcours...
+                </Text>
+              </View>
+            ) : (
+              <PersonActions
+                person={person}
+                hasOpenCase={journey?.state === "CASE_OPEN"}
+                openCaseId={
+                  journey?.state === "CASE_OPEN"
+                    ? journey.openCaseId
+                    : undefined
+                }
+                pendingFirstInterviewId={
+                  journey?.state === "FIRST_INTERVIEW_PLANNED"
+                    ? journey.firstInterviewId
+                    : undefined
+                }
+                waitingCaseDecision={journey?.state === "WAITING_CASE_DECISION"}
+                firstInterviewId={journey?.firstInterviewId}
+              />
+            )}
+          </View>
+
+          <View style={styles.activities}>
+            {isLoadingActivities ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="small" />
+
+                <Text style={styles.loadingText}>
+                  Chargement des activités...
+                </Text>
+              </View>
+            ) : (
+              <PersonActivitiesCard activities={activities} />
+            )}
+          </View>
         </View>
       </View>
 
@@ -154,23 +197,30 @@ export default function PersonDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  cardsGrid: {
+  desktopGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    gap: 18,
+  },
+
+  leftColumn: {
+    flexBasis: 360,
+    flexGrow: 1,
     gap: 16,
   },
 
-  cardColumn: {
-    flexBasis: 320,
-    flexGrow: 1,
+  rightColumn: {
+    flexBasis: 420,
+    flexGrow: 1.2,
+    gap: 16,
   },
 
   actions: {
-    marginTop: 18,
+    marginTop: 0,
   },
 
   activities: {
-    marginTop: 22,
+    marginTop: 0,
   },
 
   loadingBox: {

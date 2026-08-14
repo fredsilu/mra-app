@@ -1,3 +1,4 @@
+//src/features/counselor-dashboard/components/CounselorLogout.tsx
 import { StyleSheet, View } from "react-native";
 
 import { AppButton } from "@/components/ui/AppButton";
@@ -14,6 +15,7 @@ export function CounselorLogout({ isLoggingOut, onLogout }: Props) {
         title={isLoggingOut ? "Déconnexion..." : "Se déconnecter"}
         disabled={isLoggingOut}
         onPress={onLogout}
+        compact
       />
     </View>
   );
@@ -21,6 +23,6 @@ export function CounselorLogout({ isLoggingOut, onLogout }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 24,
+    alignItems: "flex-end",
   },
 });

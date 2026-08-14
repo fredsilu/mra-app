@@ -1,4 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+//src/features/activities/components/ActivitiesToolbar.tsx
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { AppInput } from "@/components/ui/AppInput";
 import type { ActivityStatus } from "@/features/activities";
@@ -9,22 +16,10 @@ const filters: Array<{
   label: string;
   value: StatusFilter;
 }> = [
-  {
-    label: "Toutes",
-    value: "all",
-  },
-  {
-    label: "Planifiées",
-    value: "planned",
-  },
-  {
-    label: "Réalisées",
-    value: "completed",
-  },
-  {
-    label: "Annulées",
-    value: "cancelled",
-  },
+  { label: "Toutes", value: "all" },
+  { label: "Planifiées", value: "planned" },
+  { label: "Réalisées", value: "completed" },
+  { label: "Annulées", value: "cancelled" },
 ];
 
 type Props = {
@@ -40,16 +35,21 @@ export function ActivitiesToolbar({
   filter,
   onFilterChange,
 }: Props) {
-  return (
-    <View style={styles.container}>
-      <AppInput
-        value={search}
-        onChangeText={onSearchChange}
-        placeholder="Rechercher une personne, un conseiller ou une activité"
-        autoCapitalize="none"
-      />
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
-      <View style={styles.filters}>
+  return (
+    <View style={[styles.container, isDesktop && styles.containerDesktop]}>
+      <View style={[styles.search, isDesktop && styles.searchDesktop]}>
+        <AppInput
+          value={search}
+          onChangeText={onSearchChange}
+          placeholder="Rechercher une activité..."
+          autoCapitalize="none"
+        />
+      </View>
+
+      <View style={[styles.filters, isDesktop && styles.filtersDesktop]}>
         {filters.map((item) => {
           const selected = filter === item.value;
 
@@ -57,11 +57,13 @@ export function ActivitiesToolbar({
             <Pressable
               key={item.value}
               onPress={() => onFilterChange(item.value)}
-              style={[styles.button, selected ? styles.buttonSelected : null]}
+              style={[
+                styles.button,
+                isDesktop && styles.buttonDesktop,
+                selected && styles.buttonSelected,
+              ]}
             >
-              <Text
-                style={[styles.text, selected ? styles.textSelected : null]}
-              >
+              <Text style={[styles.text, selected && styles.textSelected]}>
                 {item.label}
               </Text>
             </Pressable>
@@ -74,10 +76,26 @@ export function ActivitiesToolbar({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 10,
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
+
+  containerDesktop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
+
+  search: {
+    width: "100%",
+  },
+
+  searchDesktop: {
+    flex: 1,
   },
 
   filters: {
@@ -86,12 +104,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  filtersDesktop: {
+    flexShrink: 0,
+    flexWrap: "nowrap",
+  },
+
   button: {
     backgroundColor: "#FFFFFF",
     borderColor: "#D1D5DB",
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+
+  buttonDesktop: {
+    minWidth: 92,
     paddingVertical: 8,
   },
 

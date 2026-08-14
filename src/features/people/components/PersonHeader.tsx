@@ -1,5 +1,12 @@
+//src/features/people/components/PersonHeader.tsx
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { COLORS } from "@/constants/theme";
 import type { Person } from "@/features/people/person.types";
@@ -20,27 +27,45 @@ function getInitials(fullName: string): string {
 }
 
 export function PersonHeader({ person }: Props) {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDesktop && styles.containerDesktop]}>
       <Pressable
         onPress={() => router.back()}
         style={({ pressed }) => [
           styles.backButton,
-          pressed ? styles.pressed : null,
+          isDesktop && styles.backButtonDesktop,
+          pressed && styles.pressed,
         ]}
       >
         <Text style={styles.backText}>← Retour</Text>
       </Pressable>
 
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{getInitials(person.fullName)}</Text>
+      <View style={[styles.identity, isDesktop && styles.identityDesktop]}>
+        <View style={[styles.avatar, isDesktop && styles.avatarDesktop]}>
+          <Text
+            style={[styles.avatarText, isDesktop && styles.avatarTextDesktop]}
+          >
+            {getInitials(person.fullName)}
+          </Text>
+        </View>
+
+        <View
+          style={[styles.identityText, isDesktop && styles.identityTextDesktop]}
+        >
+          <Text style={[styles.name, isDesktop && styles.nameDesktop]}>
+            {person.fullName}
+          </Text>
+
+          <Text style={[styles.number, isDesktop && styles.numberDesktop]}>
+            {person.mraNumber}
+          </Text>
+        </View>
       </View>
 
-      <Text style={styles.name}>{person.fullName}</Text>
-
-      <Text style={styles.number}>{person.mraNumber}</Text>
-
-      <View style={styles.badges}>
+      <View style={[styles.badges, isDesktop && styles.badgesDesktop]}>
         <View
           style={[
             styles.badge,
@@ -68,18 +93,40 @@ export function PersonHeader({ person }: Props) {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+
+  containerDesktop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 18,
+    marginBottom: 16,
   },
 
   backButton: {
     alignSelf: "flex-start",
-    marginBottom: 20,
+    marginBottom: 18,
+  },
+
+  backButtonDesktop: {
+    alignSelf: "center",
+    marginBottom: 0,
   },
 
   backText: {
     color: "#2563EB",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
+  },
+
+  identity: {
+    alignItems: "center",
+  },
+
+  identityDesktop: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 14,
   },
 
   avatar: {
@@ -91,10 +138,28 @@ const styles = StyleSheet.create({
     width: 84,
   },
 
+  avatarDesktop: {
+    borderRadius: 28,
+    height: 56,
+    width: 56,
+  },
+
   avatarText: {
     color: "#2563EB",
     fontSize: 30,
     fontWeight: "900",
+  },
+
+  avatarTextDesktop: {
+    fontSize: 20,
+  },
+
+  identityText: {
+    alignItems: "center",
+  },
+
+  identityTextDesktop: {
+    alignItems: "flex-start",
   },
 
   name: {
@@ -105,10 +170,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+  nameDesktop: {
+    fontSize: 24,
+    marginTop: 0,
+    textAlign: "left",
+  },
+
   number: {
     color: COLORS.muted,
     fontSize: 15,
     marginTop: 6,
+  },
+
+  numberDesktop: {
+    fontSize: 13,
+    marginTop: 3,
   },
 
   badges: {
@@ -119,10 +195,16 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
 
+  badgesDesktop: {
+    flexShrink: 0,
+    justifyContent: "flex-end",
+    marginTop: 0,
+  },
+
   badge: {
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
 
   activeBadge: {
@@ -134,6 +216,7 @@ const styles = StyleSheet.create({
   },
 
   badgeText: {
+    fontSize: 12,
     fontWeight: "800",
   },
 
@@ -148,12 +231,13 @@ const styles = StyleSheet.create({
   churchBadge: {
     backgroundColor: "#EDE9FE",
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
 
   churchText: {
     color: "#7C3AED",
+    fontSize: 12,
     fontWeight: "800",
   },
 

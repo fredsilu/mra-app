@@ -11,6 +11,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { getPersonById } from "@/features/people/person.service";
@@ -23,16 +24,12 @@ import {
   CaseInformationCard,
 } from "@/features/cases";
 import { AppButton } from "@/components/ui/AppButton";
-import { AppInput } from "@/components/ui/AppInput";
+
 import { COLORS } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  ActivityCard,
-  getActivitiesByCase,
-  type Activity,
-} from "@/features/activities";
+import { getActivitiesByCase, type Activity } from "@/features/activities";
 import { closeCase, getCase } from "@/features/cases/case.service";
-import { CASE_STATUS_LABELS, type Case } from "@/features/cases/case.types";
+import type { Case } from "@/features/cases/case.types";
 
 function showMessage(title: string, message: string): void {
   if (Platform.OS === "web") {
@@ -43,26 +40,12 @@ function showMessage(title: string, message: string): void {
   Alert.alert(title, message);
 }
 
-function formatDate(value?: { toDate: () => Date }): string {
-  if (!value) {
-    return "Non renseignée";
-  }
-
-  try {
-    return value.toDate().toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-  } catch {
-    return "Non renseignée";
-  }
-}
-
 export default function CaseDetailScreen() {
   const { id } = useLocalSearchParams<{
     id?: string;
   }>();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
   const { profile } = useAuth();
 
@@ -222,39 +205,42 @@ export default function CaseDetailScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          isDesktop && styles.contentDesktop,
+        ]}
+      >
         <CaseHeader helpCase={helpCase} />
 
-        <CaseInformationCard helpCase={helpCase} />
+        <View
+          style={[styles.desktopGrid, !isDesktop && styles.desktopGridMobile]}
+        >
+          <View style={styles.leftColumn}>
+            <CaseInformationCard helpCase={helpCase} />
 
-        <CaseActivitiesCard helpCase={helpCase} activities={activities} />
+            <CaseActions personId={helpCase.personId} />
+          </View>
 
-        {!isClosed && canManageCase ? (
-          <CaseClosureCard
-            closureReason={closureReason}
-            closureSummary={closureSummary}
-            isClosing={isClosing}
-            onReasonChange={setClosureReason}
-            onSummaryChange={setClosureSummary}
-            onClose={() => {
-              void handleCloseCase();
-            }}
-          />
-        ) : null}
+          <View style={styles.rightColumn}>
+            <CaseActivitiesCard helpCase={helpCase} activities={activities} />
 
-        <CaseActions personId={helpCase.personId} />
+            {!isClosed && canManageCase ? (
+              <CaseClosureCard
+                closureReason={closureReason}
+                closureSummary={closureSummary}
+                isClosing={isClosing}
+                onReasonChange={setClosureReason}
+                onSummaryChange={setClosureSummary}
+                onClose={() => {
+                  void handleCloseCase();
+                }}
+              />
+            ) : null}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function Info({ label, value }: { label: string; value?: string }) {
-  return (
-    <View style={styles.info}>
-      <Text style={styles.infoLabel}>{label}</Text>
-
-      <Text style={styles.infoValue}>{value || "Non renseigné"}</Text>
-    </View>
   );
 }
 
@@ -285,31 +271,37 @@ const styles = StyleSheet.create({
 
   content: {
     alignSelf: "center",
-    maxWidth: 900,
     padding: 16,
     paddingBottom: 50,
     width: "100%",
   },
 
-  cardTitle: {
-    color: COLORS.text,
-    fontSize: 19,
-    fontWeight: "800",
+  contentDesktop: {
+    maxWidth: 1180,
+    paddingHorizontal: 20,
+    paddingTop: 18,
   },
 
-  info: {
-    gap: 4,
+  desktopGrid: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 18,
+    marginTop: 16,
   },
 
-  infoLabel: {
-    color: COLORS.muted,
-    fontSize: 13,
-    fontWeight: "600",
+  desktopGridMobile: {
+    flexDirection: "column",
   },
 
-  infoValue: {
-    color: COLORS.text,
-    fontSize: 15,
-    lineHeight: 22,
+  leftColumn: {
+    flex: 1,
+    gap: 16,
+    width: "100%",
+  },
+
+  rightColumn: {
+    flex: 1.25,
+    gap: 16,
+    width: "100%",
   },
 });

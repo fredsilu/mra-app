@@ -147,19 +147,27 @@ export default function UsersScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.statistics}>
-          <SummaryCard label="Total" value={statistics.total} />
+        <View
+          style={[styles.statistics, isDesktop && styles.statisticsDesktop]}
+        >
+          <SummaryCard
+            label="Total"
+            value={statistics.total}
+            compact={isDesktop}
+          />
 
           <SummaryCard
             label="Actifs"
             value={statistics.active}
             variant="active"
+            compact={isDesktop}
           />
 
           <SummaryCard
             label="Inactifs"
             value={statistics.inactive}
             variant="inactive"
+            compact={isDesktop}
           />
         </View>
 
@@ -321,15 +329,18 @@ function SummaryCard({
   label,
   value,
   variant,
+  compact = false,
 }: {
   label: string;
   value: number;
   variant?: "active" | "inactive";
+  compact?: boolean;
 }) {
   return (
     <View
       style={[
         styles.summaryCard,
+        compact && styles.summaryCardDesktop,
         variant === "active" ? styles.summaryCardActive : null,
         variant === "inactive" ? styles.summaryCardInactive : null,
       ]}
@@ -337,6 +348,7 @@ function SummaryCard({
       <Text
         style={[
           styles.summaryValue,
+          compact && styles.summaryValueDesktop,
           variant === "active" ? styles.summaryValueActive : null,
           variant === "inactive" ? styles.summaryValueInactive : null,
         ]}
@@ -344,7 +356,11 @@ function SummaryCard({
         {value}
       </Text>
 
-      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text
+        style={[styles.summaryLabel, compact && styles.summaryLabelDesktop]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -401,7 +417,33 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 16,
+  },
+  header: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 20,
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+
+  headerMobile: {
+    flexDirection: "column",
+    gap: 16,
+  },
+
+  title: {
+    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: "900",
+    marginTop: 5,
+  },
+
+  subtitle: {
+    color: COLORS.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
   },
   center: {
     alignItems: "center",
@@ -425,17 +467,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: "center",
   },
-  header: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 24,
-    justifyContent: "space-between",
-    marginBottom: 22,
-  },
-  headerMobile: {
-    flexDirection: "column",
-    gap: 16,
-  },
+
   headerText: {
     flex: 1,
   },
@@ -445,18 +477,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1.1,
   },
-  title: {
-    color: COLORS.text,
-    fontSize: 32,
-    fontWeight: "900",
-    marginTop: 9,
-  },
-  subtitle: {
-    color: COLORS.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 7,
-  },
+
   newButton: {
     backgroundColor: "#4F46E5",
     borderRadius: 10,
@@ -475,8 +496,14 @@ const styles = StyleSheet.create({
   statistics: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 18,
+    marginBottom: 16,
   },
+
+  statisticsDesktop: {
+    gap: 8,
+    marginBottom: 10,
+  },
+
   summaryCard: {
     backgroundColor: COLORS.white,
     borderColor: COLORS.border,
@@ -485,36 +512,62 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
   },
+
+  summaryCardDesktop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "center",
+    minHeight: 54,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+
   summaryCardActive: {
     backgroundColor: "#F0FDF4",
     borderColor: "#BBF7D0",
   },
+
   summaryCardInactive: {
     backgroundColor: "#FEF2F2",
     borderColor: "#FECACA",
   },
+
   summaryValue: {
     color: COLORS.text,
     fontSize: 24,
     fontWeight: "800",
   },
+
+  summaryValueDesktop: {
+    fontSize: 20,
+  },
+
   summaryValueActive: {
     color: "#15803D",
   },
+
   summaryValueInactive: {
     color: "#B91C1C",
   },
+
   summaryLabel: {
     color: COLORS.muted,
     fontSize: 12,
     fontWeight: "600",
     marginTop: 3,
   },
+
+  summaryLabelDesktop: {
+    fontSize: 13,
+    marginTop: 0,
+  },
+
   toolbar: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 16,
-    marginBottom: 18,
+    gap: 12,
+    marginBottom: 10,
   },
   toolbarMobile: {
     alignItems: "stretch",
@@ -617,6 +670,7 @@ const styles = StyleSheet.create({
     color: "#4338CA",
     fontWeight: "800",
   },
+
   cardIdentity: {
     flex: 1,
   },

@@ -1,3 +1,5 @@
+//src/features/people/components/PersonActivitiesCard.tsx
+
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 

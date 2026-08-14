@@ -27,7 +27,15 @@ interface Props {
 
 export function PersonFormSections({ values, errors, setField }: Props) {
   const { width } = useWindowDimensions();
-  const twoColumns = width >= 820;
+
+  const isTablet = width >= 700;
+  const isDesktop = width >= 1000;
+
+  const gridColumns = [
+    styles.grid,
+    isTablet && styles.gridTablet,
+    isDesktop && styles.gridDesktop,
+  ];
 
   return (
     <View style={styles.stack}>
@@ -35,7 +43,7 @@ export function PersonFormSections({ values, errors, setField }: Props) {
         title="Identité"
         subtitle="Les informations principales de la personne."
       >
-        <View style={[styles.grid, twoColumns && styles.gridWide]}>
+        <View style={gridColumns}>
           <View style={styles.field}>
             <FormField label="Nom complet" error={errors.fullName}>
               <AppInput
@@ -75,7 +83,7 @@ export function PersonFormSections({ values, errors, setField }: Props) {
         title="Vie dans l’Église"
         subtitle="Ces informations facilitent l’orientation et l’accueil."
       >
-        <View style={[styles.grid, twoColumns && styles.gridWide]}>
+        <View style={gridColumns}>
           <View style={styles.field}>
             <AppSelect
               label="Statut dans l’Église"
@@ -161,7 +169,7 @@ export function PersonFormSections({ values, errors, setField }: Props) {
         title="Coordonnées"
         subtitle="Les moyens permettant de rester en contact avec la personne."
       >
-        <View style={[styles.grid, twoColumns && styles.gridWide]}>
+        <View style={gridColumns}>
           <View style={styles.field}>
             <FormField label="Téléphone">
               <AppInput
@@ -185,7 +193,7 @@ export function PersonFormSections({ values, errors, setField }: Props) {
             </FormField>
           </View>
 
-          <View style={styles.fieldWide}>
+          <View style={[styles.field, isDesktop && styles.fieldWideDesktop]}>
             <FormField label="Adresse">
               <AppInput
                 value={values.address ?? ""}
@@ -202,25 +210,30 @@ export function PersonFormSections({ values, errors, setField }: Props) {
 
 const styles = StyleSheet.create({
   stack: {
-    gap: 16,
-  },
-
-  grid: {
     gap: 14,
   },
 
-  gridWide: {
+  grid: {
+    gap: 12,
+  },
+
+  gridTablet: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+
+  gridDesktop: {
     flexDirection: "row",
     flexWrap: "wrap",
   },
 
   field: {
-    flexBasis: 320,
+    flexBasis: 300,
     flexGrow: 1,
   },
 
-  fieldWide: {
-    flexBasis: 480,
+  fieldWideDesktop: {
+    flexBasis: 620,
     flexGrow: 2,
   },
 });

@@ -1,3 +1,5 @@
+// app/%28app%29/people/index.tsx
+
 import { router } from "expo-router";
 import {
   FlatList,
@@ -12,7 +14,6 @@ import { AppInput } from "@/components/ui/AppInput";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingView } from "@/components/common/LoadingView";
 import { Page } from "@/components/layout/Page";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { PersonCard } from "@/features/people/components/PersonCard";
 import { PeopleTable } from "@/features/people/components/PeopleTable";
 import { usePeople } from "@/features/people/hooks/usePeople";
@@ -36,7 +37,9 @@ export default function PeopleScreen() {
         <View style={styles.headerText}>
           <Text style={styles.eyebrow}>MINISTÈRE DE LA RELATION D’AIDE</Text>
 
-          <Text style={styles.title}>Personnes</Text>
+          <Text style={[styles.title, isDesktop && styles.titleDesktop]}>
+            Personnes
+          </Text>
 
           <Text style={styles.subtitle}>
             Accueillir, connaître et accompagner chaque personne avec attention.
@@ -102,17 +105,19 @@ export default function PeopleScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    alignItems: "flex-start",
+    alignItems: "center",
     flexDirection: "row",
-    gap: 24,
+    gap: 20,
     justifyContent: "space-between",
-    marginBottom: 24,
-    maxWidth: 1400,
+    marginBottom: 14,
+    width: "100%",
   },
 
   headerMobile: {
+    alignItems: "stretch",
     flexDirection: "column",
-    gap: 16,
+    gap: 14,
+    marginBottom: 18,
   },
 
   headerText: {
@@ -121,63 +126,66 @@ const styles = StyleSheet.create({
 
   eyebrow: {
     color: "#9A6700",
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
   },
 
   title: {
     color: COLORS.text,
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: "900",
-    marginTop: 12,
+    marginTop: 7,
+  },
+
+  titleDesktop: {
+    fontSize: 28,
   },
 
   subtitle: {
     color: COLORS.muted,
-    fontSize: 16,
-    lineHeight: 23,
-    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
   },
 
   mobileButton: {
     width: "100%",
   },
+
   toolbar: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 16,
-    marginBottom: 20,
-    maxWidth: 1200,
+    gap: 14,
+    marginBottom: 14,
+    width: "100%",
   },
 
   searchContainer: {
     flex: 1,
-    maxWidth: 1000,
   },
 
   resultCount: {
     color: COLORS.muted,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
-    minWidth: 130,
-    textAlign: "left",
+    minWidth: 120,
   },
 
   toolbarMobile: {
     alignItems: "stretch",
     flexDirection: "column",
-    gap: 10,
+    gap: 8,
   },
 
   resultCountMobile: {
     minWidth: 0,
-    textAlign: "left",
   },
+
   newButton: {
     backgroundColor: "#4F46E5",
     borderRadius: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 10,
   },
 

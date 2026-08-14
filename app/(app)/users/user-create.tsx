@@ -3,16 +3,19 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   SafeAreaView,
-  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
+
+import { FormCard, FormHeader, FormPage } from "@/components/forms";
+
+import { FormField } from "@/components/forms/FormField";
+import { AppButton } from "@/components/ui/AppButton";
 
 import { AppInput } from "@/components/ui/AppInput";
 import { AppSelect, AppSelectOption } from "@/components/ui/AppSelect";
@@ -126,6 +129,9 @@ function getErrorMessage(error: unknown): string {
 
 export default function UserCreateScreen() {
   const { profile } = useAuth();
+
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -281,63 +287,19 @@ export default function UserCreateScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: COLORS.light,
-      }}
-    >
-      <KeyboardAvoidingView
-        style={{
-          flex: 1,
-        }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <FormPage>
+      <FormHeader
+        title="Nouvel utilisateur"
+        description="Créez un compte et attribuez-lui un rôle dans le Ministère de la Relation d’Aide."
+      />
+
+      <FormCard
+        title="Informations du compte"
+        description="Renseignez l’identité, les droits d’accès et les informations de connexion."
       >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            padding: 16,
-            paddingBottom: 40,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 26,
-              fontWeight: "700",
-              color: COLORS.text,
-              marginBottom: 6,
-            }}
-          >
-            Nouvel utilisateur
-          </Text>
-
-          <Text
-            style={{
-              color: COLORS.muted,
-              marginBottom: 22,
-              lineHeight: 20,
-            }}
-          >
-            Créez un compte et attribuez-lui un rôle dans le Ministère de la
-            Relation d'Aide.
-          </Text>
-
-          <View
-            style={{
-              gap: 16,
-            }}
-          >
-            <View style={{ gap: 6 }}>
-              <Text
-                style={{
-                  color: COLORS.text,
-                  fontSize: 14,
-                  fontWeight: "600",
-                }}
-              >
-                Nom complet *
-              </Text>
-
+        <View style={[styles.formGrid, isDesktop && styles.formGridDesktop]}>
+          <View style={styles.field}>
+            <FormField label="Nom complet" required>
               <AppInput
                 placeholder="Ex. Jean Dupont"
                 value={displayName}
@@ -345,19 +307,11 @@ export default function UserCreateScreen() {
                 autoCapitalize="words"
                 editable={!isSaving}
               />
-            </View>
+            </FormField>
+          </View>
 
-            <View style={{ gap: 6 }}>
-              <Text
-                style={{
-                  color: COLORS.text,
-                  fontSize: 14,
-                  fontWeight: "600",
-                }}
-              >
-                Adresse email *
-              </Text>
-
+          <View style={styles.field}>
+            <FormField label="Adresse email" required>
               <AppInput
                 placeholder="Ex. jean@example.com"
                 value={email}
@@ -367,8 +321,10 @@ export default function UserCreateScreen() {
                 autoCorrect={false}
                 editable={!isSaving}
               />
-            </View>
+            </FormField>
+          </View>
 
+          <View style={styles.field}>
             <AppSelect<UserRole>
               label="Rôle"
               placeholder="Sélectionner un rôle"
@@ -377,7 +333,9 @@ export default function UserCreateScreen() {
               onValueChange={setRole}
               required
             />
+          </View>
 
+          <View style={styles.field}>
             <AppSelect<ActiveStatus>
               label="Statut"
               placeholder="Sélectionner un statut"
@@ -386,18 +344,10 @@ export default function UserCreateScreen() {
               onValueChange={setActiveStatus}
               required
             />
+          </View>
 
-            <View style={{ gap: 6 }}>
-              <Text
-                style={{
-                  color: COLORS.text,
-                  fontSize: 14,
-                  fontWeight: "600",
-                }}
-              >
-                Mot de passe temporaire *
-              </Text>
-
+          <View style={styles.field}>
+            <FormField label="Mot de passe temporaire" required>
               <AppInput
                 placeholder="Minimum 6 caractères"
                 value={password}
@@ -407,19 +357,11 @@ export default function UserCreateScreen() {
                 autoCorrect={false}
                 editable={!isSaving}
               />
-            </View>
+            </FormField>
+          </View>
 
-            <View style={{ gap: 6 }}>
-              <Text
-                style={{
-                  color: COLORS.text,
-                  fontSize: 14,
-                  fontWeight: "600",
-                }}
-              >
-                Confirmer le mot de passe *
-              </Text>
-
+          <View style={styles.field}>
+            <FormField label="Confirmer le mot de passe" required>
               <AppInput
                 placeholder="Répéter le mot de passe"
                 value={passwordConfirmation}
@@ -429,100 +371,78 @@ export default function UserCreateScreen() {
                 autoCorrect={false}
                 editable={!isSaving}
               />
-            </View>
-
-            <View
-              style={{
-                backgroundColor: "#FFF8E1",
-                borderWidth: 1,
-                borderColor: "#FFE082",
-                borderRadius: 12,
-                padding: 14,
-              }}
-            >
-              <Text
-                style={{
-                  color: COLORS.text,
-                  fontSize: 13,
-                  lineHeight: 19,
-                }}
-              >
-                Communiquez le mot de passe temporaire à  l'utilisateur de
-                manière confidentielle. La gestion du changement obligatoire de
-                mot de passe sera ajoutée ultérieurement.
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              disabled={isSaving}
-              onPress={handleCreateUser}
-              style={{
-                minHeight: 52,
-                borderRadius: 12,
-                backgroundColor: COLORS.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: isSaving ? 0.65 : 1,
-                marginTop: 4,
-              }}
-            >
-              {isSaving ? (
-                <>
-                  <ActivityIndicator color={COLORS.white} />
-
-                  <Text
-                    style={{
-                      marginTop: 6,
-                      color: COLORS.white,
-                      fontSize: 13,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Création en cours...
-                  </Text>
-                </>
-              ) : (
-                <Text
-                  style={{
-                    color: COLORS.white,
-                    fontSize: 16,
-                    fontWeight: "700",
-                  }}
-                >
-                  Créer l'utilisateur
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              disabled={isSaving}
-              onPress={() => router.back()}
-              style={{
-                minHeight: 50,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                backgroundColor: COLORS.white,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: isSaving ? 0.65 : 1,
-              }}
-            >
-              <Text
-                style={{
-                  color: COLORS.text,
-                  fontSize: 16,
-                  fontWeight: "700",
-                }}
-              >
-                Annuler
-              </Text>
-            </TouchableOpacity>
+            </FormField>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </View>
+
+        <View style={styles.warning}>
+          <Text style={styles.warningText}>
+            Communiquez le mot de passe temporaire à l’utilisateur de manière
+            confidentielle. La gestion du changement obligatoire de mot de passe
+            sera ajoutée ultérieurement.
+          </Text>
+        </View>
+      </FormCard>
+
+      <View style={[styles.actions, isDesktop && styles.actionsDesktop]}>
+        <AppButton
+          title="Annuler"
+          onPress={() => router.back()}
+          disabled={isSaving}
+          secondary
+          compact
+        />
+
+        <AppButton
+          title={isSaving ? "Création en cours..." : "Créer l'utilisateur"}
+          onPress={() => {
+            void handleCreateUser();
+          }}
+          disabled={isSaving}
+          compact
+        />
+      </View>
+    </FormPage>
   );
 }
+
+const styles = StyleSheet.create({
+  formGrid: {
+    gap: 14,
+  },
+
+  formGridDesktop: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+
+  field: {
+    flexBasis: 360,
+    flexGrow: 1,
+  },
+
+  warning: {
+    backgroundColor: "#FFF8E1",
+    borderColor: "#FFE082",
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 16,
+    padding: 14,
+  },
+
+  warningText: {
+    color: COLORS.text,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+
+  actions: {
+    gap: 10,
+  },
+
+  actionsDesktop: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+});

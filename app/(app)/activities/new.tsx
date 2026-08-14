@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import { FormHeader, FormPage } from "@/components/forms";
+import { AppButton } from "@/components/ui/AppButton";
 
 import { AppInput } from "@/components/ui/AppInput";
 import { AppSelect, type AppSelectOption } from "@/components/ui/AppSelect";
@@ -439,33 +440,22 @@ export default function NewActivityScreen() {
       </View>
 
       <View style={styles.actions}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.cancelButton,
-            pressed && !isSaving && styles.buttonPressed,
-            isSaving && styles.buttonDisabled,
-          ]}
+        <AppButton
+          title="Annuler"
+          secondary
+          compact
           disabled={isSaving}
           onPress={() => router.back()}
-        >
-          <Text style={styles.cancelButtonText}>Annuler</Text>
-        </Pressable>
+        />
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveButton,
-            pressed && !isSaving && styles.buttonPressed,
-            isSaving && styles.buttonDisabled,
-          ]}
+        <AppButton
+          title={isSaving ? "Enregistrement..." : "Enregistrer l’activité"}
+          compact
           disabled={isSaving}
           onPress={() => {
             void handleSave();
           }}
-        >
-          <Text style={styles.saveButtonText}>
-            {isSaving ? "Enregistrement..." : "Enregistrer l’activité"}
-          </Text>
-        </Pressable>
+        />
       </View>
     </FormPage>
   );
@@ -525,50 +515,9 @@ const styles = StyleSheet.create({
 
   actions: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     justifyContent: "flex-end",
-    marginTop: 8,
-  },
-
-  cancelButton: {
-    alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 52,
-    paddingHorizontal: 22,
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  saveButton: {
-    alignItems: "center",
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    flexGrow: 1,
-    justifyContent: "center",
-    maxWidth: 320,
-    minHeight: 52,
-    paddingHorizontal: 24,
-  },
-
-  saveButtonText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-
-  buttonPressed: {
-    opacity: 0.8,
-  },
-
-  buttonDisabled: {
-    opacity: 0.55,
+    marginTop: 12,
   },
 });
