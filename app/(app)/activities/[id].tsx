@@ -214,7 +214,7 @@ export default function ActivityDetailScreen() {
       <View
         style={[styles.desktopGrid, !isDesktop && styles.desktopGridMobile]}
       >
-        <View style={styles.leftColumn}>
+        <View style={[styles.leftColumn, !isDesktop && styles.mobileColumn]}>
           <ActivityInformationCard activity={activity} />
 
           {isPlanned &&
@@ -255,7 +255,7 @@ export default function ActivityDetailScreen() {
           <ActivityActions personId={activity.personId} />
         </View>
 
-        <View style={styles.rightColumn}>
+        <View style={[styles.rightColumn, !isDesktop && styles.mobileColumn]}>
           <ActivityResultCard
             result={result}
             completedResult={activity.result}
@@ -371,5 +371,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 18,
     textAlign: "center",
+  },
+  mobileColumn: {
+    flexBasis: "auto",
+    flexGrow: 0,
+    flexShrink: 0,
+    width: "100%",
   },
 });

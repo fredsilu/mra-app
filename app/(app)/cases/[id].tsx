@@ -14,7 +14,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { getPersonById } from "@/features/people/person.service";
 
 import {
   CaseActions,
@@ -83,9 +82,7 @@ export default function CaseDetailScreen() {
 
       // Sécurité spécifique au conseiller.
       if (profile?.role === "conseiller") {
-        const person = await getPersonById(loadedCase.personId);
-
-        const hasAccess = person?.counselorIds?.includes(profile.uid) ?? false;
+        const hasAccess = loadedCase.counselorId === profile.uid;
 
         if (!hasAccess) {
           setHelpCase(null);
@@ -93,7 +90,7 @@ export default function CaseDetailScreen() {
 
           showMessage(
             "Accès refusé",
-            "Vous n’avez pas accès au dossier de cette personne.",
+            "Ce dossier est attribué à un autre conseiller.",
           );
 
           router.replace("/cases");
@@ -216,13 +213,13 @@ export default function CaseDetailScreen() {
         <View
           style={[styles.desktopGrid, !isDesktop && styles.desktopGridMobile]}
         >
-          <View style={styles.leftColumn}>
+          <View style={[styles.leftColumn, !isDesktop && styles.mobileColumn]}>
             <CaseInformationCard helpCase={helpCase} />
 
             <CaseActions personId={helpCase.personId} />
           </View>
 
-          <View style={styles.rightColumn}>
+          <View style={[styles.rightColumn, !isDesktop && styles.mobileColumn]}>
             <CaseActivitiesCard helpCase={helpCase} activities={activities} />
 
             {!isClosed && canManageCase ? (
@@ -302,6 +299,12 @@ const styles = StyleSheet.create({
   rightColumn: {
     flex: 1.25,
     gap: 16,
+    width: "100%",
+  },
+  mobileColumn: {
+    flexBasis: "auto",
+    flexGrow: 0,
+    flexShrink: 0,
     width: "100%",
   },
 });

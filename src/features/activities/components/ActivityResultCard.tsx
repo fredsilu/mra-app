@@ -31,36 +31,47 @@ export function ActivityResultCard({
 }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
+
   if (isPlanned) {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, !isDesktop && styles.cardMobile]}>
         <Text style={styles.title}>Compte rendu</Text>
 
-        <AppInput
-          value={result}
-          onChangeText={onResultChange}
-          placeholder="Résultat de l’entretien, de l’appel ou de l’activité..."
-          multiline
-          editable={!isCompleting && !isCancelling}
-        />
+        <View style={styles.inputContainer}>
+          <AppInput
+            value={result}
+            onChangeText={onResultChange}
+            placeholder="Résultat de l’entretien, de l’appel ou de l’activité..."
+            multiline
+            editable={!isCompleting && !isCancelling}
+          />
+        </View>
 
         <View style={[styles.actions, isDesktop && styles.actionsDesktop]}>
-          <AppButton
-            title={
-              isCompleting ? "Enregistrement..." : "Marquer comme réalisée"
-            }
-            disabled={isCompleting || isCancelling}
-            onPress={onComplete}
-            compact
-          />
+          <View
+            style={[styles.actionItem, isDesktop && styles.actionItemDesktop]}
+          >
+            <AppButton
+              title={
+                isCompleting ? "Enregistrement..." : "Marquer comme réalisée"
+              }
+              disabled={isCompleting || isCancelling}
+              onPress={onComplete}
+              compact
+            />
+          </View>
 
-          <AppButton
-            title={isCancelling ? "Annulation..." : "Annuler l’activité"}
-            disabled={isCompleting || isCancelling}
-            onPress={onCancel}
-            secondary
-            compact
-          />
+          <View
+            style={[styles.actionItem, isDesktop && styles.actionItemDesktop]}
+          >
+            <AppButton
+              title={isCancelling ? "Annulation..." : "Annuler l’activité"}
+              disabled={isCompleting || isCancelling}
+              onPress={onCancel}
+              secondary
+              compact
+            />
+          </View>
         </View>
       </View>
     );
@@ -68,7 +79,7 @@ export function ActivityResultCard({
 
   if (isCompleted) {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, !isDesktop && styles.cardMobile]}>
         <Text style={styles.title}>Compte rendu</Text>
 
         <Text style={styles.resultText}>
@@ -90,10 +101,26 @@ const styles = StyleSheet.create({
     gap: 14,
     marginTop: 0,
     padding: 18,
+    width: "100%",
+  },
+
+  cardMobile: {
+    padding: 14,
+  },
+
+  title: {
+    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "800",
+  },
+
+  inputContainer: {
+    width: "100%",
   },
 
   actions: {
     gap: 10,
+    width: "100%",
   },
 
   actionsDesktop: {
@@ -102,10 +129,12 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
 
-  title: {
-    color: COLORS.text,
-    fontSize: 20,
-    fontWeight: "800",
+  actionItem: {
+    width: "100%",
+  },
+
+  actionItemDesktop: {
+    width: "auto",
   },
 
   resultText: {

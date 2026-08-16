@@ -1,5 +1,7 @@
+// src/features/activities/components/ActivityDecisionCard.tsx
+
 import { router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { AppButton } from "@/components/ui/AppButton";
 import { COLORS } from "@/constants/theme";
@@ -11,6 +13,9 @@ type Props = {
 };
 
 export function ActivityDecisionCard({ activity, onCloseWithoutCase }: Props) {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
+
   const canDecide =
     activity.status === "completed" &&
     activity.type === "first_interview" &&
@@ -21,31 +26,45 @@ export function ActivityDecisionCard({ activity, onCloseWithoutCase }: Props) {
   }
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, !isDesktop && styles.cardMobile]}>
       <Text style={styles.title}>Décision après entretien</Text>
 
       <Text style={styles.text}>
         Décidez si cette personne doit entrer dans un parcours d’accompagnement.
       </Text>
 
-      <View style={styles.actions}>
-        <AppButton
-          title="Ouvrir le dossier"
-          onPress={() =>
-            router.push({
-              pathname: "/cases/form",
-              params: {
-                firstInterviewActivityId: activity.id,
-                personId: activity.personId,
-                personName: activity.personName,
-                counselorId: activity.counselorId,
-                counselorName: activity.counselorName,
-              },
-            })
-          }
-        />
+      <View style={[styles.actions, isDesktop && styles.actionsDesktop]}>
+        <View
+          style={[styles.actionItem, isDesktop && styles.actionItemDesktop]}
+        >
+          <AppButton
+            title="Ouvrir le dossier"
+            compact
+            onPress={() =>
+              router.push({
+                pathname: "/cases/form",
+                params: {
+                  firstInterviewActivityId: activity.id,
+                  personId: activity.personId,
+                  personName: activity.personName,
+                  counselorId: activity.counselorId,
+                  counselorName: activity.counselorName,
+                },
+              })
+            }
+          />
+        </View>
 
-        <AppButton title="Clôturer sans dossier" onPress={onCloseWithoutCase} />
+        <View
+          style={[styles.actionItem, isDesktop && styles.actionItemDesktop]}
+        >
+          <AppButton
+            title="Clôturer sans dossier"
+            secondary
+            compact
+            onPress={onCloseWithoutCase}
+          />
+        </View>
       </View>
     </View>
   );
@@ -58,8 +77,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     gap: 14,
-    marginTop: 24,
+    marginTop: 0,
     padding: 18,
+    width: "100%",
+  },
+
+  cardMobile: {
+    padding: 14,
   },
 
   title: {
@@ -75,6 +99,21 @@ const styles = StyleSheet.create({
   },
 
   actions: {
-    gap: 12,
+    gap: 10,
+    width: "100%",
+  },
+
+  actionsDesktop: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+
+  actionItem: {
+    width: "100%",
+  },
+
+  actionItemDesktop: {
+    width: "auto",
   },
 });
