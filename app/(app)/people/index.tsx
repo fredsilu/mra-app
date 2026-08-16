@@ -1,8 +1,7 @@
-// app/%28app%29/people/index.tsx
+// app/(app)/people/index.tsx
 
 import { router } from "expo-router";
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -88,16 +87,15 @@ export default function PeopleScreen() {
       ) : isDesktop ? (
         <PeopleTable people={vm.people} onOpen={openPerson} />
       ) : (
-        <FlatList
-          data={vm.people}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <PersonCard person={item} onPress={() => openPerson(item.id)} />
-          )}
-          refreshing={vm.isRefreshing}
-          onRefresh={vm.refresh}
-          scrollEnabled={false}
-        />
+        <View style={styles.mobileList}>
+          {vm.people.map((person) => (
+            <PersonCard
+              key={person.id}
+              person={person}
+              onPress={() => openPerson(person.id)}
+            />
+          ))}
+        </View>
       )}
     </Page>
   );
@@ -197,5 +195,8 @@ const styles = StyleSheet.create({
 
   buttonPressed: {
     opacity: 0.75,
+  },
+  mobileList: {
+    gap: 12,
   },
 });

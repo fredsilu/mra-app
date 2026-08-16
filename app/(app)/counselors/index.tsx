@@ -1,7 +1,5 @@
 //app/(app)/counselors/index.tsx
 
-// app/(app)/counselors/index.tsx
-
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -149,9 +147,12 @@ export default function CounselorHomeScreen() {
             onRefresh={() => void loadData(true)}
           />
         }
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          !isDesktop && styles.contentMobile,
+        ]}
       >
-        <View style={styles.hero}>
+        <View style={[styles.hero, !isDesktop && styles.heroMobile]}>
           <View style={styles.heroCopy}>
             <Text style={styles.eyebrow}>MON ESPACE CONSEILLER</Text>
 
@@ -164,7 +165,9 @@ export default function CounselorHomeScreen() {
           </View>
 
           {data.overdueActivitiesCount > 0 ? (
-            <View style={styles.alertBadge}>
+            <View
+              style={[styles.alertBadge, !isDesktop && styles.alertBadgeMobile]}
+            >
               <Text style={styles.alertBadgeValue}>
                 {data.overdueActivitiesCount}
               </Text>
@@ -184,16 +187,21 @@ export default function CounselorHomeScreen() {
         <View
           style={[styles.primaryGrid, !isDesktop && styles.primaryGridMobile]}
         >
-          <View style={styles.mainColumn}>
+          <View style={[styles.mainColumn, !isDesktop && styles.mobileColumn]}>
             <CounselorActivities activities={data.plannedActivities} />
           </View>
 
-          <View style={styles.sideColumn}>
+          <View style={[styles.sideColumn, !isDesktop && styles.mobileColumn]}>
             <CounselorCases cases={data.activeCases} />
           </View>
         </View>
 
-        <View style={styles.recentSection}>
+        <View
+          style={[
+            styles.recentSection,
+            !isDesktop && styles.recentSectionMobile,
+          ]}
+        >
           <CounselorRecentActivities
             activities={data.recentCompletedActivities}
           />
@@ -298,6 +306,8 @@ const styles = StyleSheet.create({
 
   primaryGridMobile: {
     flexDirection: "column",
+    gap: 10,
+    marginTop: 14,
   },
 
   mainColumn: {
@@ -312,6 +322,9 @@ const styles = StyleSheet.create({
 
   recentSection: {
     marginTop: 18,
+  },
+  recentSectionMobile: {
+    marginTop: 10,
   },
 
   logoutSection: {
@@ -342,5 +355,25 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginTop: 8,
     textAlign: "center",
+  },
+  mobileColumn: {
+    flexBasis: "auto",
+    flexGrow: 0,
+    flexShrink: 0,
+    width: "100%",
+  },
+  heroMobile: {
+    flexDirection: "column",
+    gap: 12,
+    padding: 16,
+  },
+  alertBadgeMobile: {
+    alignSelf: "flex-start",
+    minWidth: 0,
+  },
+  contentMobile: {
+    paddingHorizontal: 14,
+    paddingTop: 16,
+    paddingBottom: 36,
   },
 });

@@ -1,4 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+//src/features/activities/components/ActivityResultCard.tsx
+
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { AppButton } from "@/components/ui/AppButton";
 import { AppInput } from "@/components/ui/AppInput";
@@ -27,6 +29,8 @@ export function ActivityResultCard({
   onComplete,
   onCancel,
 }: Props) {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
   if (isPlanned) {
     return (
       <View style={styles.card}>
@@ -40,19 +44,22 @@ export function ActivityResultCard({
           editable={!isCompleting && !isCancelling}
         />
 
-        <View style={styles.actions}>
+        <View style={[styles.actions, isDesktop && styles.actionsDesktop]}>
           <AppButton
             title={
               isCompleting ? "Enregistrement..." : "Marquer comme réalisée"
             }
             disabled={isCompleting || isCancelling}
             onPress={onComplete}
+            compact
           />
 
           <AppButton
             title={isCancelling ? "Annulation..." : "Annuler l’activité"}
             disabled={isCompleting || isCancelling}
             onPress={onCancel}
+            secondary
+            compact
           />
         </View>
       </View>
@@ -81,8 +88,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     gap: 14,
-    marginTop: 24,
+    marginTop: 0,
     padding: 18,
+  },
+
+  actions: {
+    gap: 10,
+  },
+
+  actionsDesktop: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "flex-end",
   },
 
   title: {
@@ -95,9 +112,5 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 15,
     lineHeight: 23,
-  },
-
-  actions: {
-    gap: 12,
   },
 });

@@ -1,5 +1,13 @@
+//src/features/cases/components/CaseActivitiesCard.tsx
+
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { AppButton } from "@/components/ui/AppButton";
 import { COLORS } from "@/constants/theme";
@@ -13,11 +21,13 @@ type Props = {
 
 export function CaseActivitiesCard({ helpCase, activities }: Props) {
   const isClosed = helpCase.status === "closed";
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
   return (
     <View style={styles.section}>
-      <View style={styles.header}>
-        <View>
+      <View style={[styles.header, !isDesktop && styles.headerMobile]}>
+        <View style={styles.headerCopy}>
           <Text style={styles.title}>Activités</Text>
 
           <Text style={styles.subtitle}>{activities.length} activité(s)</Text>
@@ -37,14 +47,14 @@ export function CaseActivitiesCard({ helpCase, activities }: Props) {
             }
             style={({ pressed }) => [
               styles.newButton,
-              pressed ? styles.pressed : null,
+              !isDesktop && styles.newButtonMobile,
+              pressed && styles.pressed,
             ]}
           >
             <Text style={styles.newButtonText}>Nouvelle activité</Text>
           </Pressable>
         ) : null}
       </View>
-
       {activities.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Aucune activité</Text>
@@ -71,27 +81,13 @@ export function CaseActivitiesCard({ helpCase, activities }: Props) {
           ))}
         </View>
       )}
-
-      <View style={styles.personAction}>
-        <AppButton
-          title="Voir la personne"
-          onPress={() =>
-            router.push({
-              pathname: "/people/[id]",
-              params: {
-                id: helpCase.personId,
-              },
-            })
-          }
-        />
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: 24,
+    marginTop: 0,
   },
 
   header: {
@@ -100,6 +96,32 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: "space-between",
     marginBottom: 14,
+  },
+
+  headerMobile: {
+    alignItems: "stretch",
+    flexDirection: "column",
+    gap: 10,
+  },
+
+  headerCopy: {
+    flex: 1,
+  },
+
+  newButton: {
+    backgroundColor: "#4F46E5",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+
+  newButtonMobile: {
+    alignItems: "center",
+    alignSelf: "stretch",
+  },
+
+  personAction: {
+    marginTop: 12,
   },
 
   title: {
@@ -111,13 +133,6 @@ const styles = StyleSheet.create({
   subtitle: {
     color: COLORS.muted,
     marginTop: 4,
-  },
-
-  newButton: {
-    backgroundColor: "#4F46E5",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
   },
 
   newButtonText: {
@@ -150,10 +165,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 6,
     textAlign: "center",
-  },
-
-  personAction: {
-    marginTop: 16,
   },
 
   pressed: {

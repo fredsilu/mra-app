@@ -3,7 +3,13 @@
 
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { LoadingView } from "@/components/common/LoadingView";
 import { Page } from "@/components/layout/Page";
@@ -32,6 +38,8 @@ export default function PersonDetailsScreen() {
   const [isLoadingPerson, setIsLoadingPerson] = useState(true);
 
   const [isLoadingActivities, setIsLoadingActivities] = useState(true);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
   const {
     journey,
@@ -103,14 +111,14 @@ export default function PersonDetailsScreen() {
     <Page>
       <PersonHeader person={person} />
 
-      <View style={styles.desktopGrid}>
-        <View style={styles.leftColumn}>
+      <View style={[styles.desktopGrid, !isDesktop && styles.mobileGrid]}>
+        <View style={[styles.leftColumn, !isDesktop && styles.mobileColumn]}>
           <PersonIdentityCard person={person} />
 
           <PersonContactCard person={person} />
         </View>
 
-        <View style={styles.rightColumn}>
+        <View style={[styles.rightColumn, !isDesktop && styles.mobileColumn]}>
           <View style={styles.actions}>
             {isLoadingJourney ? (
               <View style={styles.loadingBox}>
@@ -155,43 +163,6 @@ export default function PersonDetailsScreen() {
           </View>
         </View>
       </View>
-
-      <View style={styles.actions}>
-        {isLoadingJourney ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" />
-
-            <Text style={styles.loadingText}>Chargement du parcours...</Text>
-          </View>
-        ) : (
-          <PersonActions
-            person={person}
-            hasOpenCase={journey?.state === "CASE_OPEN"}
-            openCaseId={
-              journey?.state === "CASE_OPEN" ? journey.openCaseId : undefined
-            }
-            pendingFirstInterviewId={
-              journey?.state === "FIRST_INTERVIEW_PLANNED"
-                ? journey.firstInterviewId
-                : undefined
-            }
-            waitingCaseDecision={journey?.state === "WAITING_CASE_DECISION"}
-            firstInterviewId={journey?.firstInterviewId}
-          />
-        )}
-      </View>
-
-      <View style={styles.activities}>
-        {isLoadingActivities ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" />
-
-            <Text style={styles.loadingText}>Chargement des activités...</Text>
-          </View>
-        ) : (
-          <PersonActivitiesCard activities={activities} />
-        )}
-      </View>
     </Page>
   );
 }
@@ -201,18 +172,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 18,
-  },
-
-  leftColumn: {
-    flexBasis: 360,
-    flexGrow: 1,
-    gap: 16,
-  },
-
-  rightColumn: {
-    flexBasis: 420,
-    flexGrow: 1.2,
-    gap: 16,
   },
 
   actions: {
@@ -243,5 +202,28 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 18,
     textAlign: "center",
+  },
+
+  leftColumn: {
+    flexBasis: 360,
+    flexGrow: 1,
+    gap: 16,
+    width: "100%",
+  },
+
+  rightColumn: {
+    flexBasis: 420,
+    flexGrow: 1.2,
+    gap: 16,
+    width: "100%",
+  },
+  mobileGrid: {
+    flexDirection: "column",
+  },
+
+  mobileColumn: {
+    flexBasis: "auto",
+    flexGrow: 0,
+    width: "100%",
   },
 });
