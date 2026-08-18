@@ -121,6 +121,12 @@ export function AppNavigationMenu() {
               />
             ) : null}
 
+            <MenuItem
+              icon="🔑"
+              label="Modifier mon mot de passe"
+              onPress={() => navigate("/change-password")}
+            />
+
             <View style={styles.divider} />
 
             <MenuItem
