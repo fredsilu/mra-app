@@ -3,30 +3,69 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { COLORS } from "@/constants/theme";
 import type { Person } from "@/features/people/person.types";
-import { maritalStatusOptions } from "../constants/person.options";
+
+import {
+  churchStatusOptions,
+  contactChannelOptions,
+  genderOptions,
+  maritalStatusOptions,
+  originOptions,
+} from "../constants/person.options";
 
 type Props = {
   person: Person;
 };
 
+function getOptionLabel<T extends string>(
+  value: T | undefined,
+  options: Array<{
+    label: string;
+    value: T;
+  }>,
+): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return options.find((option) => option.value === value)?.label;
+}
+
 export function PersonIdentityCard({ person }: Props) {
-  const maritalStatusLabel = maritalStatusOptions.find(
-    (option) => option.value === person.maritalStatus,
-  )?.label;
+  const genderLabel = getOptionLabel(person.gender, genderOptions);
+
+  const maritalStatusLabel = getOptionLabel(
+    person.maritalStatus,
+    maritalStatusOptions,
+  );
+
+  const churchStatusLabel = getOptionLabel(
+    person.churchStatus,
+    churchStatusOptions,
+  );
+
+  const originLabel = getOptionLabel(person.origin, originOptions);
+
+  const contactChannelLabel = getOptionLabel(
+    person.contactChannel,
+    contactChannelOptions,
+  );
+
   return (
     <View style={styles.stack}>
       <View style={styles.card}>
         <Text style={styles.title}>Identité</Text>
 
         <Info label="Nom complet" value={person.fullName} />
-        <Info label="Sexe" value={person.gender} />
+
+        <Info label="Sexe" value={genderLabel} />
+
         <Info label="État civil" value={maritalStatusLabel} />
       </View>
 
       <View style={styles.card}>
         <Text style={styles.title}>Vie dans l’Église</Text>
 
-        <Info label="Statut à l’église" value={person.churchStatus} />
+        <Info label="Statut à l’église" value={churchStatusLabel} />
 
         <Info label="Ministère / Département" value={person.ministry} />
 
@@ -36,9 +75,9 @@ export function PersonIdentityCard({ person }: Props) {
 
         <Info label="À l’église depuis" value={person.churchSince} />
 
-        <Info label="Origine" value={person.origin} />
+        <Info label="Origine" value={originLabel} />
 
-        <Info label="Canal de contact" value={person.contactChannel} />
+        <Info label="Canal de contact" value={contactChannelLabel} />
       </View>
     </View>
   );
