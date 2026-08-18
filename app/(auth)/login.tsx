@@ -47,6 +47,15 @@ function getLoginErrorMessage(error: unknown) {
   return "Une erreur est survenue pendant la connexion.";
 }
 
+function showMessage(title: string, message: string) {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+
+  Alert.alert(title, message);
+}
+
 export default function LoginScreen() {
   const { login } = useAuth();
 
@@ -99,16 +108,18 @@ export default function LoginScreen() {
 
       await resetPassword(normalizedEmail);
 
-      Alert.alert(
+      showMessage(
         "Email envoyé",
-        "Un lien de réinitialisation du mot de passe a été envoyé.",
+        `Un lien de réinitialisation du mot de passe a été envoyé à ${normalizedEmail}.
+
+Consultez votre boîte de réception ainsi que votre dossier de courriers indésirables (spam).`,
       );
     } catch (error) {
       console.error("Erreur de réinitialisation :", error);
 
-      Alert.alert(
+      showMessage(
         "Réinitialisation impossible",
-        "Impossible d’envoyer le lien de réinitialisation.",
+        "Impossible d’envoyer le lien de réinitialisation. Vérifiez l’adresse email et réessayez.",
       );
     } finally {
       setIsResetting(false);
